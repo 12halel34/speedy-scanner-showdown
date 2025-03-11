@@ -1,5 +1,6 @@
+
 import { GameState, Item } from '@/types/game';
-import { getRandomItems } from '@/data/items';
+import { getRandomItems, getRandomVegetables } from '@/data/items';
 import { toast } from 'sonner';
 
 export const GAME_TIME = 60; // 60 seconds game time
@@ -11,6 +12,9 @@ export const initialGameState: GameState = {
   timeLeft: GAME_TIME,
   items: [],
   scannedItems: [],
+  throwableItems: [],
+  thrownItems: [],
+  lanes: [],
   mistakes: 0,
   gameStatus: 'menu',
   highScore: 0
@@ -24,7 +28,10 @@ export const initGame = (): GameState => {
   return {
     ...initialGameState,
     items: getRandomItems(INITIAL_ITEMS_COUNT),
-    highScore
+    highScore,
+    lanes: [0, 1, 2, 3],
+    throwableItems: [],
+    thrownItems: []
   };
 };
 
@@ -55,9 +62,17 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   const randomCompliment = compliments[Math.floor(Math.random() * compliments.length)];
   toast.success(randomCompliment);
   
-  // Remove the scanned item and add a new random one
+  // Remove the scanned item and add new items including a higher chance of vegetables
   const updatedItems = state.items.filter(i => i.id !== item.id);
-  const newItems = [...updatedItems, ...getRandomItems(1)];
+  
+  // Get 1-2 random items with standard distribution
+  const newRegularItems = getRandomItems(Math.floor(Math.random() * 2) + 1);
+  
+  // Get 1-2 vegetables specifically
+  const newVegetables = getRandomVegetables(Math.floor(Math.random() * 2) + 1);
+  
+  // Combine all new items
+  const newItems = [...updatedItems, ...newRegularItems, ...newVegetables];
   
   return {
     ...state,

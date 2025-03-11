@@ -1,3 +1,4 @@
+
 import { Item } from '@/types/game';
 
 // Regular scannable supermarket items
@@ -127,6 +128,51 @@ export const marketItems: Item[] = [
     isScannable: true,
     isThrowable: true,
     category: 'vegetable'
+  },
+  {
+    id: 'lettuce',
+    name: 'Lettuce',
+    price: 1.29,
+    image: '🥬',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
+  },
+  {
+    id: 'pepper',
+    name: 'Pepper',
+    price: 0.99,
+    image: '🫑',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
+  },
+  {
+    id: 'corn',
+    name: 'Corn',
+    price: 0.69,
+    image: '🌽',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
+  },
+  {
+    id: 'onion',
+    name: 'Onion',
+    price: 0.49,
+    image: '🧅',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
+  },
+  {
+    id: 'garlic',
+    name: 'Garlic',
+    price: 0.79,
+    image: '🧄',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
   }
 ];
 
@@ -174,6 +220,9 @@ export const invalidItems: Item[] = [
   }
 ];
 
+// Filter vegetable items
+export const vegetableItems = marketItems.filter(item => item.category === 'vegetable');
+
 export const getAllItems = (): Item[] => {
   return [...marketItems, ...invalidItems];
 };
@@ -187,6 +236,22 @@ export const getRandomItems = (count: number, invalidItemProbability = 0.2): Ite
     const pool = isInvalid ? invalidItems : marketItems;
     const randomItem = pool[Math.floor(Math.random() * pool.length)];
     items.push({ ...randomItem });
+  }
+  
+  return items;
+};
+
+// New function to get only vegetable items
+export const getRandomVegetables = (count: number): Item[] => {
+  const items: Item[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const randomVegetable = vegetableItems[Math.floor(Math.random() * vegetableItems.length)];
+    // Add unique identifier to ensure React keys are unique
+    items.push({ 
+      ...randomVegetable, 
+      id: `${randomVegetable.id}-${Math.random().toString(36).substr(2, 9)}`
+    });
   }
   
   return items;

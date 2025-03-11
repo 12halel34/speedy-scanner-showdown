@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -23,12 +22,8 @@ interface GamePlayProps {
 const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [gameState, setGameState] = useState<GameState>({
     ...initialState,
-    throwableItems: [],
-    thrownItems: [],
-    lanes: [0, 1, 2, 3]
   });
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
-  const [selectedLane, setSelectedLane] = useState<number | null>(null);
   
   // Timer effect
   useEffect(() => {
