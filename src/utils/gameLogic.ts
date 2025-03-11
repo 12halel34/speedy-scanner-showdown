@@ -1,7 +1,6 @@
-
 import { GameState, Item } from '@/types/game';
 import { getRandomItems } from '@/data/items';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 export const GAME_TIME = 60; // 60 seconds game time
 export const MAX_MISTAKES = 3; // 3 mistakes and you're out

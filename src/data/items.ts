@@ -1,4 +1,3 @@
-
 import { Item } from '@/types/game';
 
 // Regular scannable supermarket items
@@ -57,6 +56,7 @@ export const marketItems: Item[] = [
     price: 1.29,
     image: '🥦',
     isScannable: true,
+    isThrowable: true,
     category: 'vegetable'
   },
   {
@@ -65,6 +65,7 @@ export const marketItems: Item[] = [
     price: 0.99,
     image: '🥕',
     isScannable: true,
+    isThrowable: true,
     category: 'vegetable'
   },
   {
@@ -89,6 +90,7 @@ export const marketItems: Item[] = [
     price: 1.99,
     image: '🥑',
     isScannable: true,
+    isThrowable: true,
     category: 'vegetable'
   },
   {
@@ -98,6 +100,33 @@ export const marketItems: Item[] = [
     image: '🍉',
     isScannable: true,
     category: 'fruit'
+  },
+  {
+    id: 'tomato',
+    name: 'Tomato',
+    price: 0.79,
+    image: '🍅',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
+  },
+  {
+    id: 'potato',
+    name: 'Potato',
+    price: 0.59,
+    image: '🥔',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
+  },
+  {
+    id: 'cucumber',
+    name: 'Cucumber',
+    price: 0.89,
+    image: '🥒',
+    isScannable: true,
+    isThrowable: true,
+    category: 'vegetable'
   }
 ];
 

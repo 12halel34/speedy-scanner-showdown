@@ -5,7 +5,9 @@ export interface Item {
   price: number;
   image: string;
   isScannable: boolean;
+  isThrowable?: boolean;
   category: ItemCategory;
+  lane?: number;
 }
 
 export type ItemCategory = 
@@ -24,9 +26,12 @@ export interface GameState {
   timeLeft: number;
   items: Item[];
   scannedItems: Item[];
+  throwableItems: Item[];
+  thrownItems: Item[];
   mistakes: number;
   gameStatus: 'menu' | 'playing' | 'paused' | 'gameOver';
   highScore: number;
+  lanes: number[];
 }
 
 export interface Achievement {

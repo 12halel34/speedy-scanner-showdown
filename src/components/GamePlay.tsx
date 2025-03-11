@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
+import ThrowingLanes from './ThrowingLanes';
 import { Item as ItemType, GameState } from '@/types/game';
 import { 
   processItemScan, 
@@ -11,6 +12,8 @@ import {
 } from '@/utils/gameLogic';
 import { Clock, Zap, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import Item from './Item';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -18,8 +21,14 @@ interface GamePlayProps {
 }
 
 const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
-  const [gameState, setGameState] = useState<GameState>(initialState);
+  const [gameState, setGameState] = useState<GameState>({
+    ...initialState,
+    throwableItems: [],
+    thrownItems: [],
+    lanes: [0, 1, 2, 3]
+  });
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
+  const [selectedLane, setSelectedLane] = useState<number | null>(null);
   
   // Timer effect
   useEffect(() => {
@@ -41,6 +50,31 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     
     return () => clearInterval(timer);
   }, [gameState.gameStatus, onGameOver]);
+
+  // Occasionally add throwable vegetables
+  useEffect(() => {
+    const throwableTimer = setInterval(() => {
+      if (gameState.gameStatus === 'playing' && gameState.throwableItems.length < 3) {
+        setGameState(prev => {
+          // Find a vegetable from current items
+          const vegetables = prev.items.filter(item => 
+            item.category === 'vegetable' && !prev.throwableItems.some(t => t.id === item.id)
+          );
+          
+          if (vegetables.length > 0) {
+            const randomVegetable = {...vegetables[Math.floor(Math.random() * vegetables.length)], isThrowable: true};
+            return {
+              ...prev,
+              throwableItems: [...prev.throwableItems, randomVegetable]
+            };
+          }
+          return prev;
+        });
+      }
+    }, 5000);
+    
+    return () => clearInterval(throwableTimer);
+  }, [gameState.gameStatus]);
   
   // Handle scanning
   const handleScanItem = useCallback((item: ItemType) => {
@@ -63,6 +97,34 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setSelectedItem(null);
     }
   }, [selectedItem, onGameOver]);
+
+  // Handle throwing
+  const handleThrowItem = useCallback((item: ItemType) => {
+    setGameState(prev => {
+      const updatedThrowableItems = prev.throwableItems.filter(i => i.id !== item.id);
+      const randomLane = Math.floor(Math.random() * prev.lanes.length);
+      const thrownItem = { ...item, lane: randomLane };
+      
+      // Add points for throwing
+      const bonusPoints = 150;
+      toast.success(`+${bonusPoints} points! Great throw!`);
+      
+      // After 1.5 seconds, remove the thrown item
+      setTimeout(() => {
+        setGameState(current => ({
+          ...current,
+          thrownItems: current.thrownItems.filter(i => i.id !== item.id)
+        }));
+      }, 1500);
+      
+      return {
+        ...prev,
+        score: prev.score + bonusPoints,
+        throwableItems: updatedThrowableItems,
+        thrownItems: [...prev.thrownItems, thrownItem]
+      };
+    });
+  }, []);
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -90,6 +152,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           <div className="text-2xl font-bold">{gameState.mistakes}/3</div>
         </div>
       </div>
+
+      {/* Throwing Lanes */}
+      <ThrowingLanes 
+        lanes={gameState.lanes} 
+        thrownItems={gameState.thrownItems} 
+      />
       
       {/* Selected Item Display */}
       <div className="flex justify-center mb-6">
@@ -121,7 +189,26 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         <Scanner onScan={handleScanButtonClick} />
       </div>
       
-      {/* Shopping Basket Preview (could be implemented in a future version) */}
+      {/* Throwable Items */}
+      {gameState.throwableItems.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-lg font-bold text-center mb-2">Throwable Items</h3>
+          <div className="flex justify-center space-x-4">
+            {gameState.throwableItems.map(item => (
+              <Item 
+                key={`throwable-${item.id}`}
+                item={item}
+                onScan={() => {}}
+                onThrow={handleThrowItem}
+                isAnimating={false}
+                isThrowable={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Shopping Basket Preview */}
       <div className="mt-6 flex justify-center">
         <Button
           variant="outline"
