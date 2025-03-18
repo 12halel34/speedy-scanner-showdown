@@ -8,6 +8,7 @@ export interface Item {
   isThrowable?: boolean;
   category: ItemCategory;
   lane?: number;
+  location?: 'left' | 'right'; // Track which side the item is on
 }
 
 export type ItemCategory = 

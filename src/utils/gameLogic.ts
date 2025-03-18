@@ -29,9 +29,16 @@ export const initGame = (): GameState => {
   const savedHighScore = localStorage.getItem('cashier2000HighScore');
   const highScore = savedHighScore ? parseInt(savedHighScore, 10) : 0;
   
+  // Get initial items and randomly assign them to left or right
+  const items = getRandomItems(INITIAL_ITEMS_COUNT).map(item => {
+    // Invalid items initially go to the wrong side (right side)
+    const initialLocation = isMarketItem(item) ? 'right' : 'right';
+    return { ...item, location: initialLocation };
+  });
+  
   return {
     ...initialGameState,
-    items: getRandomItems(INITIAL_ITEMS_COUNT),
+    items,
     highScore,
     lanes: [0, 1, 2, 3],
     throwableItems: [],
@@ -41,6 +48,15 @@ export const initGame = (): GameState => {
 
 // Process an item scan
 export const processItemScan = (state: GameState, item: Item): GameState => {
+  // Check if item is in the correct location before scanning
+  const isInCorrectLocation = (isMarketItem(item) && item.location === 'right') || 
+                              (!isMarketItem(item) && item.location === 'left');
+
+  if (!isInCorrectLocation) {
+    toast.error("Item in wrong location! Move it to the correct side first!");
+    return state;
+  }
+
   if (!item.isScannable) {
     // Wrong item scanned
     toast.error("Wrong item! That doesn't belong in the cart!");
@@ -70,10 +86,12 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   const updatedItems = state.items.filter(i => i.id !== item.id);
   
   // Get 1-2 random items with standard distribution
-  const newRegularItems = getRandomItems(Math.floor(Math.random() * 2) + 1);
+  const newRegularItems = getRandomItems(Math.floor(Math.random() * 2) + 1)
+    .map(item => ({...item, location: 'right'})); // New items start on right
   
   // Get 1-2 vegetables specifically
-  const newVegetables = getRandomVegetables(Math.floor(Math.random() * 2) + 1);
+  const newVegetables = getRandomVegetables(Math.floor(Math.random() * 2) + 1)
+    .map(item => ({...item, location: 'right'})); // New items start on right
   
   // Combine all new items
   const newItems = [...updatedItems, ...newRegularItems, ...newVegetables];
@@ -83,6 +101,43 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     score: newScore,
     items: newItems,
     scannedItems: [...state.scannedItems, item]
+  };
+};
+
+// Move an item between left and right areas
+export const moveItem = (state: GameState, itemId: string, destination: 'left' | 'right'): GameState => {
+  const updatedItems = state.items.map(item => {
+    if (item.id === itemId) {
+      // If moving to the correct location based on item type
+      const isCorrectMove = (isMarketItem(item) && destination === 'right') || 
+                           (!isMarketItem(item) && destination === 'left');
+      
+      // Award points for correct sorting
+      if (isCorrectMove && item.location !== destination) {
+        const bonusPoints = 50;
+        toast.success(`+${bonusPoints} points! Correct sorting!`);
+        return {
+          ...item, 
+          location: destination
+        };
+      } else if (!isCorrectMove && item.location !== destination) {
+        // Penalize for incorrect sorting
+        toast.error("Wrong location for this item!");
+        return item;
+      }
+      
+      // Just move without points if it's already been in the right location before
+      return { ...item, location: destination };
+    }
+    return item;
+  });
+  
+  return {
+    ...state,
+    items: updatedItems,
+    score: isMarketItem(state.items.find(i => i.id === itemId)!) === (destination === 'right') ? 
+           state.score + 50 : 
+           state.score
   };
 };
 

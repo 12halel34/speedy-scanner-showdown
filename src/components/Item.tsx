@@ -7,16 +7,20 @@ interface ItemProps {
   item: ItemType;
   onScan: (item: ItemType) => void;
   onThrow?: (item: ItemType) => void;
+  onMove?: (item: ItemType, destination: 'left' | 'right') => void;
   isAnimating?: boolean;
   isThrowable?: boolean;
+  isDraggable?: boolean;
 }
 
 const Item: React.FC<ItemProps> = ({ 
   item, 
   onScan, 
   onThrow, 
+  onMove,
   isAnimating = true,
-  isThrowable = false
+  isThrowable = false,
+  isDraggable = false
 }) => {
   const handleClick = () => {
     if (isThrowable && onThrow) {
@@ -26,18 +30,29 @@ const Item: React.FC<ItemProps> = ({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    if (isDraggable) {
+      e.dataTransfer.setData('text/plain', JSON.stringify(item));
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  };
+
   return (
     <div 
       className={cn(
         "relative cursor-pointer transform transition-transform duration-200 hover:scale-110",
         isAnimating && "conveyor-animation",
-        isThrowable && "throwable-item"
+        isThrowable && "throwable-item",
+        isDraggable && "cursor-grab active:cursor-grabbing"
       )}
       onClick={handleClick}
+      draggable={isDraggable}
+      onDragStart={handleDragStart}
     >
       <div className={cn(
         "flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-md hover:shadow-lg w-20 h-24",
-        isThrowable && "border-2 border-green-500"
+        isThrowable && "border-2 border-green-500",
+        item.location === 'right' ? "border-blue-300" : (item.location === 'left' ? "border-red-300" : "")
       )}>
         <div className="text-4xl mb-1">{item.image}</div>
         <div className="text-xs font-medium truncate w-full text-center">{item.name}</div>

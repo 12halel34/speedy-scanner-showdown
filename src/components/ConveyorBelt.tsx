@@ -6,9 +6,10 @@ import Item from './Item';
 interface ConveyorBeltProps {
   items: ItemType[];
   onScanItem: (item: ItemType) => void;
+  onMoveItem?: (item: ItemType, destination: 'left' | 'right') => void;
 }
 
-const ConveyorBelt: React.FC<ConveyorBeltProps> = ({ items, onScanItem }) => {
+const ConveyorBelt: React.FC<ConveyorBeltProps> = ({ items, onScanItem, onMoveItem }) => {
   return (
     <div className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner">
       {/* Conveyor belt stripes */}
@@ -30,6 +31,8 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({ items, onScanItem }) => {
               key={`${item.id}-${Math.random()}`} 
               item={item} 
               onScan={onScanItem}
+              onMove={onMoveItem}
+              isDraggable={true}
             />
           ))}
         </div>

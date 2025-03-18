@@ -12,9 +12,11 @@ import {
   updateGameTime,
   saveHighScore,
   MAX_MISTAKES,
-  isMarketItem
+  isMarketItem,
+  moveItem
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
+import Item from './Item';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -123,9 +125,33 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     });
   }, []);
   
-  // Separate market and non-market items
-  const marketItems = gameState.items.filter(item => isMarketItem(item));
-  const nonMarketItems = gameState.items.filter(item => !isMarketItem(item));
+  // Handle moving items between areas
+  const handleMoveItem = useCallback((item: ItemType, destination: 'left' | 'right') => {
+    setGameState(prev => moveItem(prev, item.id, destination));
+  }, []);
+  
+  // Handle drop events
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, destination: 'left' | 'right') => {
+    e.preventDefault();
+    const itemData = e.dataTransfer.getData('text/plain');
+    if (itemData) {
+      try {
+        const item = JSON.parse(itemData) as ItemType;
+        handleMoveItem(item, destination);
+      } catch (error) {
+        console.error('Error parsing dragged item:', error);
+      }
+    }
+  }, [handleMoveItem]);
+  
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+  
+  // Filter items by location
+  const leftItems = gameState.items.filter(item => item.location === 'left');
+  const rightItems = gameState.items.filter(item => item.location === 'right');
   
   return (
     <div className="game-play p-4">
@@ -138,29 +164,31 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       />
 
       <div className="flex flex-col md:flex-row gap-4 mt-4">
-        {/* Left Column - Non-supermarket elements */}
-        <div className="w-full md:w-1/3 order-2 md:order-1">
-          {/* Non-market items */}
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-center mb-2">Non-Market Items</h3>
-            <div className="bg-gray-100 p-4 rounded-lg">
-              {nonMarketItems.length > 0 ? (
-                <div className="flex flex-wrap justify-center gap-2">
-                  {nonMarketItems.map(item => (
-                    <div 
-                      key={`nonmarket-${item.id}`}
-                      className="bg-red-100 p-2 rounded-lg cursor-pointer"
-                      onClick={() => handleScanItem(item)}
-                    >
-                      <div className="text-2xl">{item.image}</div>
-                      <div className="text-xs">{item.name}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-400 text-center">No non-market items</div>
-              )}
-            </div>
+        {/* Left Column - Non-supermarket items */}
+        <div 
+          className="w-full md:w-1/2 order-2 md:order-1 bg-red-50 p-4 rounded-lg min-h-[300px]"
+          onDrop={(e) => handleDrop(e, 'left')}
+          onDragOver={handleDragOver}
+        >
+          <h3 className="text-lg font-bold text-center mb-4">Non-Market Items (Drop Here)</h3>
+          
+          {/* Items already in the left zone */}
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
+            {leftItems.map(item => (
+              <Item 
+                key={`left-${item.id}`}
+                item={item}
+                onScan={handleScanItem}
+                onMove={handleMoveItem}
+                isAnimating={false}
+                isDraggable={true}
+              />
+            ))}
+            {leftItems.length === 0 && (
+              <div className="text-gray-500 text-center p-4">
+                Drag non-market items here
+              </div>
+            )}
           </div>
           
           {/* Throwing Lanes */}
@@ -177,14 +205,40 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         </div>
 
         {/* Right Column - Supermarket elements */}
-        <div className="w-full md:w-2/3 order-1 md:order-2 flex flex-col">
+        <div 
+          className="w-full md:w-1/2 order-1 md:order-2 bg-blue-50 p-4 rounded-lg min-h-[300px]"
+          onDrop={(e) => handleDrop(e, 'right')}
+          onDragOver={handleDragOver}
+        >
+          <h3 className="text-lg font-bold text-center mb-4">Market Items (Drop Here)</h3>
+          
+          {/* Items already in the right zone */}
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
+            {rightItems.map(item => (
+              <Item 
+                key={`right-${item.id}`}
+                item={item}
+                onScan={handleScanItem}
+                onMove={handleMoveItem}
+                isAnimating={false}
+                isDraggable={true}
+              />
+            ))}
+            {rightItems.length === 0 && (
+              <div className="text-gray-500 text-center p-4">
+                Drag market items here
+              </div>
+            )}
+          </div>
+          
           {/* Selected Item Display */}
           <SelectedItemDisplay selectedItem={selectedItem} />
           
-          {/* Conveyor Belt - Now only showing market items */}
+          {/* Conveyor Belt with new items */}
           <ConveyorBelt 
-            items={marketItems} 
-            onScanItem={handleScanItem} 
+            items={gameState.items.filter(item => item.location === undefined)}
+            onScanItem={handleScanItem}
+            onMoveItem={handleMoveItem}
           />
           
           {/* Scanner Section */}
