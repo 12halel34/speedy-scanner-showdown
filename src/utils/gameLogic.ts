@@ -1,3 +1,4 @@
+
 import { GameState, Item } from '@/types/game';
 import { getRandomItems, getRandomVegetables } from '@/data/items';
 import { toast } from 'sonner';
@@ -32,7 +33,7 @@ export const initGame = (): GameState => {
   // Get initial items and randomly assign them to left or right
   const items = getRandomItems(INITIAL_ITEMS_COUNT).map(item => {
     // Invalid items initially go to the wrong side (right side)
-    const initialLocation = isMarketItem(item) ? 'right' : 'right';
+    const initialLocation: 'left' | 'right' = isMarketItem(item) ? 'right' : 'right';
     return { ...item, location: initialLocation };
   });
   
@@ -87,11 +88,11 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   
   // Get 1-2 random items with standard distribution
   const newRegularItems = getRandomItems(Math.floor(Math.random() * 2) + 1)
-    .map(item => ({...item, location: 'right'})); // New items start on right
+    .map(item => ({...item, location: 'right' as const})); // Explicitly typed as const
   
   // Get 1-2 vegetables specifically
   const newVegetables = getRandomVegetables(Math.floor(Math.random() * 2) + 1)
-    .map(item => ({...item, location: 'right'})); // New items start on right
+    .map(item => ({...item, location: 'right' as const})); // Explicitly typed as const
   
   // Combine all new items
   const newItems = [...updatedItems, ...newRegularItems, ...newVegetables];
