@@ -133,34 +133,42 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         maxMistakes={MAX_MISTAKES}
       />
 
-      {/* Throwing Lanes */}
-      <ThrowingLanes 
-        lanes={gameState.lanes} 
-        thrownItems={gameState.thrownItems} 
-      />
-      
-      {/* Selected Item Display */}
-      <SelectedItemDisplay selectedItem={selectedItem} />
-      
-      {/* Conveyor Belt */}
-      <ConveyorBelt 
-        items={gameState.items} 
-        onScanItem={handleScanItem} 
-      />
-      
-      {/* Scanner Section */}
-      <div className="flex justify-center mt-4">
-        <Scanner onScan={handleScanButtonClick} />
+      <div className="flex flex-col md:flex-row gap-4 mt-4">
+        {/* Left Column - Non-supermarket elements */}
+        <div className="w-full md:w-1/3 order-2 md:order-1">
+          {/* Throwing Lanes */}
+          <ThrowingLanes 
+            lanes={gameState.lanes} 
+            thrownItems={gameState.thrownItems} 
+          />
+          
+          {/* Throwable Items */}
+          <ThrowableItemsDisplay 
+            throwableItems={gameState.throwableItems}
+            onThrow={handleThrowItem}
+          />
+        </div>
+
+        {/* Right Column - Supermarket elements */}
+        <div className="w-full md:w-2/3 order-1 md:order-2 flex flex-col">
+          {/* Selected Item Display */}
+          <SelectedItemDisplay selectedItem={selectedItem} />
+          
+          {/* Conveyor Belt */}
+          <ConveyorBelt 
+            items={gameState.items} 
+            onScanItem={handleScanItem} 
+          />
+          
+          {/* Scanner Section */}
+          <div className="flex justify-center mt-4">
+            <Scanner onScan={handleScanButtonClick} />
+          </div>
+          
+          {/* Shopping Basket Preview */}
+          <BasketPreview itemCount={gameState.scannedItems.length} />
+        </div>
       </div>
-      
-      {/* Throwable Items */}
-      <ThrowableItemsDisplay 
-        throwableItems={gameState.throwableItems}
-        onThrow={handleThrowItem}
-      />
-      
-      {/* Shopping Basket Preview */}
-      <BasketPreview itemCount={gameState.scannedItems.length} />
     </div>
   );
 };
