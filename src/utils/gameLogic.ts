@@ -1,4 +1,3 @@
-
 import { GameState, Item } from '@/types/game';
 import { getRandomItems, getRandomVegetables } from '@/data/items';
 import { toast } from 'sonner';
@@ -18,6 +17,11 @@ export const initialGameState: GameState = {
   mistakes: 0,
   gameStatus: 'menu',
   highScore: 0
+};
+
+// Helper function to check if an item is a market item
+export const isMarketItem = (item: Item): boolean => {
+  return item.category !== 'invalid';
 };
 
 // Initialize the game state

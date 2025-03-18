@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -12,7 +11,8 @@ import {
   processItemScan, 
   updateGameTime,
   saveHighScore,
-  MAX_MISTAKES
+  MAX_MISTAKES,
+  isMarketItem
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 
@@ -123,6 +123,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     });
   }, []);
   
+  // Separate market and non-market items
+  const marketItems = gameState.items.filter(item => isMarketItem(item));
+  const nonMarketItems = gameState.items.filter(item => !isMarketItem(item));
+  
   return (
     <div className="game-play p-4">
       {/* Game HUD/Header */}
@@ -136,6 +140,29 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       <div className="flex flex-col md:flex-row gap-4 mt-4">
         {/* Left Column - Non-supermarket elements */}
         <div className="w-full md:w-1/3 order-2 md:order-1">
+          {/* Non-market items */}
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-center mb-2">Non-Market Items</h3>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              {nonMarketItems.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {nonMarketItems.map(item => (
+                    <div 
+                      key={`nonmarket-${item.id}`}
+                      className="bg-red-100 p-2 rounded-lg cursor-pointer"
+                      onClick={() => handleScanItem(item)}
+                    >
+                      <div className="text-2xl">{item.image}</div>
+                      <div className="text-xs">{item.name}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-400 text-center">No non-market items</div>
+              )}
+            </div>
+          </div>
+          
           {/* Throwing Lanes */}
           <ThrowingLanes 
             lanes={gameState.lanes} 
@@ -154,9 +181,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           {/* Selected Item Display */}
           <SelectedItemDisplay selectedItem={selectedItem} />
           
-          {/* Conveyor Belt */}
+          {/* Conveyor Belt - Now only showing market items */}
           <ConveyorBelt 
-            items={gameState.items} 
+            items={marketItems} 
             onScanItem={handleScanItem} 
           />
           
