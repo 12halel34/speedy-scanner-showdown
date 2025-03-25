@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -17,6 +18,7 @@ import {
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import Item from './Item';
+import { getRandomItems } from '@/data/items';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -28,6 +30,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     ...initialState,
   });
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
+  const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
+  
+  // Initialize conveyor belt with items
+  useEffect(() => {
+    // Start with 4 random items on the conveyor
+    const initialItems = getRandomItems(4).map(item => ({
+      ...item,
+      location: undefined // Items on conveyor don't have a location yet
+    }));
+    
+    setConveyorItems(initialItems);
+  }, []);
   
   // Timer effect
   useEffect(() => {
@@ -127,6 +141,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   
   // Handle moving items between areas
   const handleMoveItem = useCallback((item: ItemType, destination: 'left' | 'right') => {
+    // If the item is from the conveyor belt, remove it from there
+    if (!item.location) {
+      setConveyorItems(prev => prev.filter(i => i.id !== item.id));
+    }
+    
     setGameState(prev => moveItem(prev, item.id, destination));
   }, []);
   
@@ -147,6 +166,20 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+  }, []);
+  
+  // Handle items reaching the end of the conveyor belt
+  const handleItemReachEnd = useCallback((item: ItemType) => {
+    // When an item reaches the end of the belt, add a new random item
+    const newItem = getRandomItems(1)[0];
+    
+    setConveyorItems(prev => {
+      // Remove the item that reached the end
+      const updatedItems = prev.filter(i => i.id !== item.id);
+      
+      // Add a new random item
+      return [...updatedItems, { ...newItem, location: undefined }];
+    });
   }, []);
   
   // Filter items by location
@@ -232,13 +265,14 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           </div>
           
           {/* Selected Item Display */}
-          <SelectedItemDisplay selectedItem={selectedItem} />
+          {selectedItem && <SelectedItemDisplay selectedItem={selectedItem} />}
           
-          {/* Conveyor Belt with new items */}
+          {/* Conveyor Belt with automatic movement */}
           <ConveyorBelt 
-            items={gameState.items.filter(item => item.location === undefined)}
+            items={conveyorItems}
             onScanItem={handleScanItem}
             onMoveItem={handleMoveItem}
+            onItemReachEnd={handleItemReachEnd}
           />
           
           {/* Scanner Section */}
