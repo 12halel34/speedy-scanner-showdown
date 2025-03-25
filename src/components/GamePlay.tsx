@@ -1,11 +1,8 @@
-
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
-import ThrowingLanes from './ThrowingLanes';
 import GameHeader from './GameHeader';
 import SelectedItemDisplay from './SelectedItemDisplay';
-import ThrowableItemsDisplay from './ThrowableItemsDisplay';
 import BasketPreview from './BasketPreview';
 import { Item as ItemType, GameState } from '@/types/game';
 import { 
@@ -13,8 +10,7 @@ import {
   updateGameTime,
   saveHighScore,
   MAX_MISTAKES,
-  isMarketItem,
-  moveItem
+  isMarketItem
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import Item from './Item';
@@ -31,11 +27,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   });
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const scannerRef = useRef<HTMLDivElement>(null);
   
   // Initialize conveyor belt with items
   useEffect(() => {
-    // Start with 4 random items on the conveyor
-    const initialItems = getRandomItems(4).map(item => ({
+    // Start with 6 random items on the conveyor to keep it full
+    const initialItems = getRandomItems(6).map(item => ({
       ...item,
       location: undefined // Items on conveyor don't have a location yet
     }));
@@ -47,6 +45,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   useEffect(() => {
     const timer = setInterval(() => {
       if (gameState.gameStatus === 'playing') {
+        // Increase speed multiplier as time progresses
+        if (gameState.timeLeft % 10 === 0 && gameState.timeLeft > 0) {
+          setSpeedMultiplier(prev => prev + 0.1);
+        }
+        
         setGameState(prev => {
           const newState = updateGameTime(prev);
           
@@ -63,31 +66,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     
     return () => clearInterval(timer);
   }, [gameState.gameStatus, onGameOver]);
-
-  // Occasionally add throwable vegetables
-  useEffect(() => {
-    const throwableTimer = setInterval(() => {
-      if (gameState.gameStatus === 'playing' && gameState.throwableItems.length < 3) {
-        setGameState(prev => {
-          // Find a vegetable from current items
-          const vegetables = prev.items.filter(item => 
-            item.category === 'vegetable' && !prev.throwableItems.some(t => t.id === item.id)
-          );
-          
-          if (vegetables.length > 0) {
-            const randomVegetable = {...vegetables[Math.floor(Math.random() * vegetables.length)], isThrowable: true};
-            return {
-              ...prev,
-              throwableItems: [...prev.throwableItems, randomVegetable]
-            };
-          }
-          return prev;
-        });
-      }
-    }, 5000);
-    
-    return () => clearInterval(throwableTimer);
-  }, [gameState.gameStatus]);
   
   // Handle scanning
   const handleScanItem = useCallback((item: ItemType) => {
@@ -107,61 +85,30 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         return newState;
       });
       
+      // Remove the scanned item from the conveyor
+      setConveyorItems(prev => prev.filter(item => item.id !== selectedItem.id));
       setSelectedItem(null);
     }
   }, [selectedItem, onGameOver]);
 
-  // Handle throwing
-  const handleThrowItem = useCallback((item: ItemType) => {
-    setGameState(prev => {
-      const updatedThrowableItems = prev.throwableItems.filter(i => i.id !== item.id);
-      const randomLane = Math.floor(Math.random() * prev.lanes.length);
-      const thrownItem = { ...item, lane: randomLane };
-      
-      // Add points for throwing
-      const bonusPoints = 150;
-      toast.success(`+${bonusPoints} points! Great throw!`);
-      
-      // After 1.5 seconds, remove the thrown item
-      setTimeout(() => {
-        setGameState(current => ({
-          ...current,
-          thrownItems: current.thrownItems.filter(i => i.id !== item.id)
-        }));
-      }, 1500);
-      
-      return {
-        ...prev,
-        score: prev.score + bonusPoints,
-        throwableItems: updatedThrowableItems,
-        thrownItems: [...prev.thrownItems, thrownItem]
-      };
-    });
-  }, []);
-  
-  // Handle moving items between areas
-  const handleMoveItem = useCallback((item: ItemType, destination: 'left' | 'right') => {
-    // If the item is from the conveyor belt, remove it from there
-    if (!item.location) {
-      setConveyorItems(prev => prev.filter(i => i.id !== item.id));
-    }
-    
-    setGameState(prev => moveItem(prev, item.id, destination));
-  }, []);
-  
-  // Handle drop events
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, destination: 'left' | 'right') => {
+  // Handle drop on scanner
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const itemData = e.dataTransfer.getData('text/plain');
     if (itemData) {
       try {
         const item = JSON.parse(itemData) as ItemType;
-        handleMoveItem(item, destination);
+        handleScanItem(item);
+        
+        // Simulate clicking the scan button
+        setTimeout(() => {
+          handleScanButtonClick();
+        }, 300);
       } catch (error) {
         console.error('Error parsing dragged item:', error);
       }
     }
-  }, [handleMoveItem]);
+  }, [handleScanItem, handleScanButtonClick]);
   
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -180,11 +127,31 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       // Add a new random item
       return [...updatedItems, { ...newItem, location: undefined }];
     });
+    
+    // Penalize for letting an item reach the end
+    setGameState(prev => ({
+      ...prev,
+      mistakes: prev.mistakes + 1,
+      gameStatus: prev.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : prev.gameStatus
+    }));
+    
+    toast.error("Item missed! Be faster next time!");
   }, []);
   
-  // Filter items by location
-  const leftItems = gameState.items.filter(item => item.location === 'left');
-  const rightItems = gameState.items.filter(item => item.location === 'right');
+  // Make sure we keep the conveyor belt full
+  useEffect(() => {
+    const minItemsOnBelt = 6;
+    
+    if (conveyorItems.length < minItemsOnBelt) {
+      const itemsToAdd = minItemsOnBelt - conveyorItems.length;
+      const newItems = getRandomItems(itemsToAdd).map(item => ({
+        ...item,
+        location: undefined
+      }));
+      
+      setConveyorItems(prev => [...prev, ...newItems]);
+    }
+  }, [conveyorItems.length]);
   
   return (
     <div className="game-play p-4">
@@ -196,87 +163,29 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         maxMistakes={MAX_MISTAKES}
       />
 
-      <div className="flex flex-col md:flex-row gap-4 mt-4">
-        {/* Left Column - Non-supermarket items */}
-        <div 
-          className="w-full md:w-1/2 order-2 md:order-1 bg-red-50 p-4 rounded-lg min-h-[300px]"
-          onDrop={(e) => handleDrop(e, 'left')}
-          onDragOver={handleDragOver}
-        >
-          <h3 className="text-lg font-bold text-center mb-4">Non-Market Items (Drop Here)</h3>
+      <div className="flex flex-col mt-4">
+        {/* Supermarket section */}
+        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px]">
+          <h3 className="text-lg font-bold text-center mb-4">Supermarket Scanner</h3>
           
-          {/* Items already in the left zone */}
-          <div className="flex flex-wrap justify-center gap-3 mb-4">
-            {leftItems.map(item => (
-              <Item 
-                key={`left-${item.id}`}
-                item={item}
-                onScan={handleScanItem}
-                onMove={handleMoveItem}
-                isAnimating={false}
-                isDraggable={true}
-              />
-            ))}
-            {leftItems.length === 0 && (
-              <div className="text-gray-500 text-center p-4">
-                Drag non-market items here
-              </div>
-            )}
-          </div>
-          
-          {/* Throwing Lanes */}
-          <ThrowingLanes 
-            lanes={gameState.lanes} 
-            thrownItems={gameState.thrownItems} 
-          />
-          
-          {/* Throwable Items */}
-          <ThrowableItemsDisplay 
-            throwableItems={gameState.throwableItems}
-            onThrow={handleThrowItem}
-          />
-        </div>
-
-        {/* Right Column - Supermarket elements */}
-        <div 
-          className="w-full md:w-1/2 order-1 md:order-2 bg-blue-50 p-4 rounded-lg min-h-[300px]"
-          onDrop={(e) => handleDrop(e, 'right')}
-          onDragOver={handleDragOver}
-        >
-          <h3 className="text-lg font-bold text-center mb-4">Market Items (Drop Here)</h3>
-          
-          {/* Items already in the right zone */}
-          <div className="flex flex-wrap justify-center gap-3 mb-4">
-            {rightItems.map(item => (
-              <Item 
-                key={`right-${item.id}`}
-                item={item}
-                onScan={handleScanItem}
-                onMove={handleMoveItem}
-                isAnimating={false}
-                isDraggable={true}
-              />
-            ))}
-            {rightItems.length === 0 && (
-              <div className="text-gray-500 text-center p-4">
-                Drag market items here
-              </div>
-            )}
-          </div>
-          
-          {/* Selected Item Display */}
+          {/* Selected Item Display - only show when there's a selected item */}
           {selectedItem && <SelectedItemDisplay selectedItem={selectedItem} />}
           
           {/* Conveyor Belt with automatic movement */}
           <ConveyorBelt 
             items={conveyorItems}
             onScanItem={handleScanItem}
-            onMoveItem={handleMoveItem}
             onItemReachEnd={handleItemReachEnd}
+            speedMultiplier={speedMultiplier}
           />
           
-          {/* Scanner Section */}
-          <div className="flex justify-center mt-4">
+          {/* Scanner Section with drop zone */}
+          <div 
+            ref={scannerRef}
+            className="flex justify-center mt-4 p-4 border-2 border-dashed border-gray-400 rounded-lg hover:border-blue-500 transition-colors"
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
             <Scanner onScan={handleScanButtonClick} />
           </div>
           

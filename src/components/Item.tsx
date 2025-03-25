@@ -34,6 +34,21 @@ const Item: React.FC<ItemProps> = ({
     if (isDraggable) {
       e.dataTransfer.setData('text/plain', JSON.stringify(item));
       e.dataTransfer.effectAllowed = 'move';
+      
+      // Add a ghost image for better drag experience
+      const dragImage = document.createElement('div');
+      dragImage.classList.add('drag-ghost');
+      dragImage.innerHTML = item.image;
+      dragImage.style.fontSize = '2em';
+      dragImage.style.position = 'absolute';
+      dragImage.style.top = '-1000px';
+      document.body.appendChild(dragImage);
+      e.dataTransfer.setDragImage(dragImage, 20, 20);
+      
+      // Remove the ghost element after a short delay
+      setTimeout(() => {
+        document.body.removeChild(dragImage);
+      }, 100);
     }
   };
 
@@ -58,9 +73,6 @@ const Item: React.FC<ItemProps> = ({
         <div className="text-xs font-medium truncate w-full text-center">{item.name}</div>
         {item.isScannable && !isThrowable && (
           <div className="text-xs text-green-600 font-bold">${item.price.toFixed(2)}</div>
-        )}
-        {isThrowable && (
-          <div className="text-xs text-orange-500 font-bold">Throw me!</div>
         )}
       </div>
     </div>

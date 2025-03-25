@@ -8,13 +8,15 @@ interface ConveyorBeltProps {
   onScanItem: (item: ItemType) => void;
   onMoveItem?: (item: ItemType, destination: 'left' | 'right') => void;
   onItemReachEnd?: (item: ItemType) => void;
+  speedMultiplier: number; // Added speed multiplier for increasing speed over time
 }
 
 const ConveyorBelt: React.FC<ConveyorBeltProps> = ({ 
   items, 
   onScanItem, 
   onMoveItem,
-  onItemReachEnd 
+  onItemReachEnd,
+  speedMultiplier = 1 // Default value
 }) => {
   const [movingItems, setMovingItems] = useState<(ItemType & { position: number })[]>([]);
   
@@ -41,10 +43,10 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     
     const moveInterval = setInterval(() => {
       setMovingItems(prevItems => {
-        // Move each item to the left
+        // Move each item to the left, with speed affected by speedMultiplier
         const updatedItems = prevItems.map(item => ({
           ...item,
-          position: item.position - 0.5 // Speed of movement
+          position: item.position - (0.5 * speedMultiplier) // Speed of movement increased by multiplier
         }));
         
         // Check for items that have reached the left edge
@@ -63,7 +65,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     }, 50); // Update every 50ms for smooth animation
     
     return () => clearInterval(moveInterval);
-  }, [movingItems, onItemReachEnd]);
+  }, [movingItems, onItemReachEnd, speedMultiplier]);
   
   return (
     <div className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner">
