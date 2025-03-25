@@ -27,7 +27,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
-  const scannerRef = useRef<HTMLDivElement>(null);
   
   // Initialize conveyor belt with items
   useEffect(() => {
@@ -99,29 +98,35 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     }
   }, [selectedItem, onGameOver]);
 
-  // Handle drop on scanner
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const itemData = e.dataTransfer.getData('text/plain');
-    if (itemData) {
-      try {
-        const item = JSON.parse(itemData) as ItemType;
-        handleScanItem(item);
-        
-        // Simulate clicking the scan button
-        setTimeout(() => {
-          handleScanButtonClick();
-        }, 300);
-      } catch (error) {
-        console.error('Error parsing dragged item:', error);
+  // Direct drop-to-scan handler
+  const handleItemDropOnScanner = useCallback((item: ItemType) => {
+    // Process the item directly without setting it as selected first
+    setGameState(prev => {
+      const newState = processItemScan(prev, item);
+      
+      if (newState.gameStatus === 'gameOver') {
+        saveHighScore(newState.score);
+        onGameOver(newState);
       }
-    }
-  }, [handleScanItem, handleScanButtonClick]);
-  
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
+      
+      return newState;
+    });
+    
+    // Remove the scanned item from the conveyor
+    setConveyorItems(prev => prev.filter(i => i.id !== item.id));
+    
+    // Add 1-2 new random items to keep the conveyor full
+    const newItemsCount = Math.floor(Math.random() * 2) + 1;
+    const newItems = getRandomItems(newItemsCount).map(item => ({
+      ...item,
+      location: undefined
+    }));
+    
+    setConveyorItems(prev => [...prev, ...newItems]);
+    
+    // Clear selected item (if there was any)
+    setSelectedItem(null);
+  }, [onGameOver]);
   
   // Handle items reaching the end of the conveyor belt
   const handleItemReachEnd = useCallback((item: ItemType) => {
@@ -187,14 +192,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
             speedMultiplier={speedMultiplier}
           />
           
-          {/* Scanner Section with drop zone */}
-          <div 
-            ref={scannerRef}
-            className="flex justify-center mt-4 p-4 border-2 border-dashed border-gray-400 rounded-lg hover:border-blue-500 transition-colors"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-          >
-            <Scanner onScan={handleScanButtonClick} />
+          {/* Scanner Section */}
+          <div className="flex justify-center mt-4">
+            <Scanner 
+              onScan={handleScanButtonClick} 
+              onItemDrop={handleItemDropOnScanner} 
+            />
           </div>
           
           {/* Shopping Basket Preview */}

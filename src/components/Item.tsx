@@ -35,7 +35,7 @@ const Item: React.FC<ItemProps> = ({
       e.dataTransfer.setData('text/plain', JSON.stringify(item));
       e.dataTransfer.effectAllowed = 'move';
       
-      // Add a ghost image for better drag experience
+      // Add visual feedback during drag
       const dragImage = document.createElement('div');
       dragImage.classList.add('drag-ghost');
       dragImage.innerHTML = item.image;
@@ -63,6 +63,8 @@ const Item: React.FC<ItemProps> = ({
       onClick={handleClick}
       draggable={isDraggable}
       onDragStart={handleDragStart}
+      aria-label={`Drag ${item.name} to scanner`}
+      title="Drag to scanner"
     >
       <div className={cn(
         "flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-md hover:shadow-lg w-20 h-24",
