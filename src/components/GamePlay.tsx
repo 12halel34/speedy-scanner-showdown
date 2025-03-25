@@ -13,7 +13,6 @@ import {
   isMarketItem
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
-import Item from './Item';
 import { getRandomItems } from '@/data/items';
 
 interface GamePlayProps {
@@ -45,7 +44,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   useEffect(() => {
     const timer = setInterval(() => {
       if (gameState.gameStatus === 'playing') {
-        // Increase speed multiplier as time progresses
+        // Increase speed multiplier as time progresses - every 10 seconds
         if (gameState.timeLeft % 10 === 0 && gameState.timeLeft > 0) {
           setSpeedMultiplier(prev => prev + 0.1);
         }
@@ -87,6 +86,15 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       
       // Remove the scanned item from the conveyor
       setConveyorItems(prev => prev.filter(item => item.id !== selectedItem.id));
+      
+      // Add 1-2 new random items to keep the conveyor full
+      const newItemsCount = Math.floor(Math.random() * 2) + 1;
+      const newItems = getRandomItems(newItemsCount).map(item => ({
+        ...item,
+        location: undefined
+      }));
+      
+      setConveyorItems(prev => [...prev, ...newItems]);
       setSelectedItem(null);
     }
   }, [selectedItem, onGameOver]);

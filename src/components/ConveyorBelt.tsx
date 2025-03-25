@@ -8,7 +8,7 @@ interface ConveyorBeltProps {
   onScanItem: (item: ItemType) => void;
   onMoveItem?: (item: ItemType, destination: 'left' | 'right') => void;
   onItemReachEnd?: (item: ItemType) => void;
-  speedMultiplier: number; // Added speed multiplier for increasing speed over time
+  speedMultiplier: number;
 }
 
 const ConveyorBelt: React.FC<ConveyorBeltProps> = ({ 
@@ -16,43 +16,55 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   onScanItem, 
   onMoveItem,
   onItemReachEnd,
-  speedMultiplier = 1 // Default value
+  speedMultiplier = 1
 }) => {
   const [movingItems, setMovingItems] = useState<(ItemType & { position: number })[]>([]);
   
-  // Initialize and manage the moving items
+  // Update items when the items prop changes
   useEffect(() => {
     if (items.length > 0) {
-      // Initialize positions for new items
-      const updatedItems = items.map(item => {
-        // Find if the item already exists in movingItems
+      // Map the new items to have positions
+      const newItemsWithPosition = items.map(item => {
+        // Check if the item already exists in movingItems
         const existingItem = movingItems.find(mi => mi.id === item.id);
         return {
           ...item,
-          position: existingItem ? existingItem.position : 100 // Start from the right edge (100%)
+          position: existingItem ? existingItem.position : 100 // Start new items from the right
         };
       });
       
-      setMovingItems(updatedItems);
+      setMovingItems(prevItems => {
+        // Filter out items that no longer exist in the incoming items
+        const filteredItems = prevItems.filter(item => 
+          newItemsWithPosition.some(ni => ni.id === item.id)
+        );
+        
+        // Add any new items that aren't already in the moving items
+        const itemsToAdd = newItemsWithPosition.filter(item => 
+          !filteredItems.some(fi => fi.id === item.id)
+        );
+        
+        return [...filteredItems, ...itemsToAdd];
+      });
     }
   }, [items]);
   
-  // Effect to animate items and handle reaching the end
+  // Animation effect for moving items
   useEffect(() => {
     if (movingItems.length === 0) return;
     
     const moveInterval = setInterval(() => {
       setMovingItems(prevItems => {
-        // Move each item to the left, with speed affected by speedMultiplier
+        // Move each item to the left with speedMultiplier affecting the speed
         const updatedItems = prevItems.map(item => ({
           ...item,
-          position: item.position - (0.5 * speedMultiplier) // Speed of movement increased by multiplier
+          position: item.position - (0.5 * speedMultiplier) // Speed increases with the multiplier
         }));
         
         // Check for items that have reached the left edge
         const itemsToRemove = updatedItems.filter(item => item.position <= -15);
         
-        // Notify parent component about items that reached the end
+        // Notify parent of items reaching the end
         itemsToRemove.forEach(item => {
           if (onItemReachEnd) {
             onItemReachEnd(item);
