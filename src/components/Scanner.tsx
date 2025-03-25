@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Scan } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
+import { toast } from 'sonner';
 
 interface ScannerProps {
   onScan: () => void;
@@ -24,7 +25,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     }, 300);
   };
   
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setIsDropTarget(true);
@@ -34,13 +35,15 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setIsDropTarget(false);
   };
   
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setIsDropTarget(false);
     
     const itemData = e.dataTransfer.getData('text/plain');
     try {
       const item = JSON.parse(itemData) as ItemType;
+      
+      // Process the item
       onItemDrop(item);
       
       // Trigger scan animation
@@ -50,6 +53,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
       }, 300);
     } catch (error) {
       console.error('Error parsing dragged item:', error);
+      toast.error('Failed to process item');
     }
   };
   

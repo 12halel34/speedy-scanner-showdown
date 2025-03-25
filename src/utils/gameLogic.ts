@@ -53,9 +53,15 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   const isInCorrectLocation = (isMarketItem(item) && item.location === 'right') || 
                               (!isMarketItem(item) && item.location === 'left');
 
-  if (!isInCorrectLocation) {
-    toast.error("Item in wrong location! Move it to the correct side first!");
-    return state;
+  // Check if the item should be scannable
+  if (!isMarketItem(item)) {
+    // Non-supermarket item
+    toast.error(`This ${item.name} doesn't belong in the shopping cart!`);
+    return {
+      ...state,
+      mistakes: state.mistakes + 1,
+      gameStatus: state.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : state.gameStatus
+    };
   }
 
   if (!item.isScannable) {
@@ -66,6 +72,12 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
       mistakes: state.mistakes + 1,
       gameStatus: state.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : state.gameStatus
     };
+  }
+  
+  // Check location only if it's a valid item
+  if (!isInCorrectLocation) {
+    toast.error("Item in wrong location! Move it to the correct side first!");
+    return state;
   }
   
   // Update the state with the scanned item
