@@ -76,7 +76,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95 ${isDropTarget ? 'ring-4 ring-yellow-300 scale-110' : ''}`}
+        className={`scanner-btn bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95 ${isDropTarget ? 'ring-4 ring-yellow-300 scale-110' : ''}`}
         disabled={isScanning}
       >
         <Scan size={40} />

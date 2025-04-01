@@ -15,6 +15,7 @@ import {
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import { getRandomItems } from '@/data/items';
+import { Trophy, Plus } from 'lucide-react';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -28,6 +29,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [scoreAnimation, setScoreAnimation] = useState({ show: false, value: 0, x: 0, y: 0 });
   
   useEffect(() => {
     const initialItems = getRandomItems(6).map(item => ({
@@ -66,8 +68,15 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     setSelectedItem(item);
   }, []);
   
+  const showScoreAnimation = (value: number, x: number, y: number) => {
+    setScoreAnimation({ show: true, value, x, y });
+    setTimeout(() => setScoreAnimation({ show: false, value: 0, x: 0, y: 0 }), 1000);
+  };
+  
   const handleScanButtonClick = useCallback(() => {
     if (selectedItem) {
+      const previousScore = gameState.score;
+      
       setGameState(prev => {
         const newState = processItemScan(prev, selectedItem);
         
@@ -78,6 +87,14 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         
         return newState;
       });
+      
+      // Get coordinates from the scanner element
+      const scannerElement = document.querySelector('.scanner-btn');
+      if (scannerElement) {
+        const rect = scannerElement.getBoundingClientRect();
+        const points = Math.floor(selectedItem.price * 100);
+        showScoreAnimation(points, rect.x, rect.y - 40);
+      }
       
       setConveyorItems(prev => prev.filter(item => item.id !== selectedItem.id));
       
@@ -90,9 +107,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setConveyorItems(prev => [...prev, ...newItems]);
       setSelectedItem(null);
     }
-  }, [selectedItem, onGameOver]);
+  }, [selectedItem, onGameOver, gameState.score]);
 
   const handleItemDropOnScanner = useCallback((item: ItemType) => {
+    const previousScore = gameState.score;
+    
     setGameState(prev => {
       const newState = processItemScan(prev, item);
       
@@ -103,6 +122,14 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       
       return newState;
     });
+    
+    // Get coordinates from the scanner element
+    const scannerElement = document.querySelector('.scanner-btn');
+    if (scannerElement) {
+      const rect = scannerElement.getBoundingClientRect();
+      const points = Math.floor(item.price * 100);
+      showScoreAnimation(points, rect.x, rect.y - 40);
+    }
     
     setConveyorItems(prev => prev.filter(i => i.id !== item.id));
     
@@ -155,7 +182,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       />
 
       <div className="flex flex-col mt-4">
-        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px]">
+        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px] relative">
           <h3 className="text-lg font-bold text-center mb-4">Supermarket Scanner</h3>
           
           {selectedItem && <SelectedItemDisplay selectedItem={selectedItem} />}
@@ -175,6 +202,21 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           </div>
           
           <BasketPreview itemCount={gameState.scannedItems.length} />
+          
+          {/* Score animation */}
+          {scoreAnimation.show && (
+            <div 
+              className="absolute pointer-events-none animate-bounce-up animate-fade-out flex items-center text-lg font-bold text-green-600"
+              style={{ 
+                left: `${scoreAnimation.x}px`, 
+                top: `${scoreAnimation.y}px`,
+                zIndex: 50
+              }}
+            >
+              <Plus className="text-green-600 mr-1" size={16} />
+              {scoreAnimation.value}
+            </div>
+          )}
         </div>
       </div>
     </div>
