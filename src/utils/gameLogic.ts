@@ -1,6 +1,6 @@
 
 import { GameState, Item } from '@/types/game';
-import { getRandomItems, getRandomVegetables } from '@/data/items';
+import { getRandomItems, getRandomVegetables, invalidItems } from '@/data/items';
 import { toast } from 'sonner';
 
 export const GAME_TIME = 60; // 60 seconds game time
@@ -22,6 +22,7 @@ export const initialGameState: GameState = {
 
 // Helper function to check if an item is a market item
 export const isMarketItem = (item: Item): boolean => {
+  // Non-supermarket items are those with category 'invalid'
   return item.category !== 'invalid';
 };
 
@@ -186,3 +187,4 @@ export const saveHighScore = (score: number): void => {
 export const checkAchievements = (state: GameState): void => {
   // We'll implement this in a future version
 };
+

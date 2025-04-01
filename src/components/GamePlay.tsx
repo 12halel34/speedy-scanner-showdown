@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -117,6 +118,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [onGameOver]);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
+    // Just remove the item and add a new one without increasing mistakes
     const newItem = getRandomItems(1)[0];
     
     setConveyorItems(prev => {
@@ -125,6 +127,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       return [...updatedItems, { ...newItem, location: undefined }];
     });
     
+    // Inform the user that the item was moved back to storage - no penalty
     toast.info("Item moved back to storage!");
   }, []);
   

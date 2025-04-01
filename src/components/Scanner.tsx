@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Scan } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
 import { toast } from 'sonner';
+import { isMarketItem } from '@/utils/gameLogic';
 
 interface ScannerProps {
   onScan: () => void;
@@ -42,6 +43,17 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     const itemData = e.dataTransfer.getData('text/plain');
     try {
       const item = JSON.parse(itemData) as ItemType;
+      
+      // Check if the item is valid for scanning before processing
+      if (!isMarketItem(item)) {
+        toast.error(`${item.name} doesn't belong in a shopping cart!`);
+        return;
+      }
+      
+      if (!item.isScannable) {
+        toast.error(`This ${item.name} can't be scanned!`);
+        return;
+      }
       
       // Process the item
       onItemDrop(item);
