@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -15,7 +14,7 @@ import {
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import { getRandomItems } from '@/data/items';
-import { Trophy, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -32,7 +31,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [scoreAnimation, setScoreAnimation] = useState({ show: false, value: 0, x: 0, y: 0 });
   
   useEffect(() => {
-    const initialItems = getRandomItems(6).map(item => ({
+    const initialItems = getRandomItems(8).map(item => ({
       ...item,
       location: undefined
     }));
@@ -88,7 +87,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         return newState;
       });
       
-      // Get coordinates from the scanner element
       const scannerElement = document.querySelector('.scanner-btn');
       if (scannerElement) {
         const rect = scannerElement.getBoundingClientRect();
@@ -108,7 +106,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setSelectedItem(null);
     }
   }, [selectedItem, onGameOver, gameState.score]);
-
+  
   const handleItemDropOnScanner = useCallback((item: ItemType) => {
     const previousScore = gameState.score;
     
@@ -123,7 +121,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       return newState;
     });
     
-    // Get coordinates from the scanner element
     const scannerElement = document.querySelector('.scanner-btn');
     if (scannerElement) {
       const rect = scannerElement.getBoundingClientRect();
@@ -145,7 +142,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [onGameOver]);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
-    // Just remove the item and add a new one without increasing mistakes
     const newItem = getRandomItems(1)[0];
     
     setConveyorItems(prev => {
@@ -154,12 +150,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       return [...updatedItems, { ...newItem, location: undefined }];
     });
     
-    // Inform the user that the item was moved back to storage - no penalty
     toast.info("Item moved back to storage!");
   }, []);
   
   useEffect(() => {
-    const minItemsOnBelt = 6;
+    const minItemsOnBelt = 8;
     
     if (conveyorItems.length < minItemsOnBelt) {
       const itemsToAdd = minItemsOnBelt - conveyorItems.length;
@@ -203,7 +198,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           
           <BasketPreview itemCount={gameState.scannedItems.length} />
           
-          {/* Score animation */}
           {scoreAnimation.show && (
             <div 
               className="absolute pointer-events-none animate-bounce-up animate-fade-out flex items-center text-lg font-bold text-green-600"
