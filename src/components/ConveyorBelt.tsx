@@ -23,24 +23,14 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   // Update items when the items prop changes
   useEffect(() => {
     if (items.length > 0) {
-      // Map the new items to have positions, ensuring proper spacing
-      const newItemsWithPosition = items.map((item, index) => {
+      // Map the new items to have positions
+      const newItemsWithPosition = items.map(item => {
         // Check if the item already exists in movingItems
         const existingItem = movingItems.find(mi => mi.id === item.id);
-        
-        if (existingItem) {
-          return {
-            ...item,
-            position: existingItem.position // Keep existing position
-          };
-        } else {
-          // For new items, calculate a position that avoids overlap
-          // Start at 100 (right side) and space items 30 units apart
-          return {
-            ...item,
-            position: 100 + (index * 30) // Space items at least 30 units apart
-          };
-        }
+        return {
+          ...item,
+          position: existingItem ? existingItem.position : 100 // Start new items from the right
+        };
       });
       
       setMovingItems(prevItems => {
@@ -88,33 +78,6 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     
     return () => clearInterval(moveInterval);
   }, [movingItems, onItemReachEnd, speedMultiplier]);
-
-  // Check for potential item overlaps and adjust positions if needed
-  useEffect(() => {
-    if (movingItems.length <= 1) return;
-    
-    // Sort items by position from left to right
-    const sortedItems = [...movingItems].sort((a, b) => a.position - b.position);
-    
-    const minSpacing = 25; // Minimum spacing between items in percentage units
-    let needsAdjustment = false;
-    
-    // Check for overlaps
-    for (let i = 0; i < sortedItems.length - 1; i++) {
-      const currentItem = sortedItems[i];
-      const nextItem = sortedItems[i + 1];
-      
-      // If items are too close, move the right one further right
-      if (nextItem.position - currentItem.position < minSpacing) {
-        nextItem.position = currentItem.position + minSpacing;
-        needsAdjustment = true;
-      }
-    }
-    
-    if (needsAdjustment) {
-      setMovingItems([...sortedItems]);
-    }
-  }, [movingItems]);
   
   return (
     <div className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner">

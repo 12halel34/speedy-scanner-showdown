@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -14,7 +15,6 @@ import {
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import { getRandomItems } from '@/data/items';
-import { Plus } from 'lucide-react';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -28,10 +28,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
-  const [scoreAnimation, setScoreAnimation] = useState({ show: false, value: 0, x: 0, y: 0 });
   
   useEffect(() => {
-    const initialItems = getRandomItems(8).map(item => ({
+    const initialItems = getRandomItems(6).map(item => ({
       ...item,
       location: undefined
     }));
@@ -67,15 +66,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     setSelectedItem(item);
   }, []);
   
-  const showScoreAnimation = (value: number, x: number, y: number) => {
-    setScoreAnimation({ show: true, value, x, y });
-    setTimeout(() => setScoreAnimation({ show: false, value: 0, x: 0, y: 0 }), 1000);
-  };
-  
   const handleScanButtonClick = useCallback(() => {
     if (selectedItem) {
-      const previousScore = gameState.score;
-      
       setGameState(prev => {
         const newState = processItemScan(prev, selectedItem);
         
@@ -86,13 +78,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         
         return newState;
       });
-      
-      const scannerElement = document.querySelector('.scanner-btn');
-      if (scannerElement) {
-        const rect = scannerElement.getBoundingClientRect();
-        const points = Math.floor(selectedItem.price * 100);
-        showScoreAnimation(points, rect.x, rect.y - 40);
-      }
       
       setConveyorItems(prev => prev.filter(item => item.id !== selectedItem.id));
       
@@ -105,11 +90,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setConveyorItems(prev => [...prev, ...newItems]);
       setSelectedItem(null);
     }
-  }, [selectedItem, onGameOver, gameState.score]);
-  
+  }, [selectedItem, onGameOver]);
+
   const handleItemDropOnScanner = useCallback((item: ItemType) => {
-    const previousScore = gameState.score;
-    
     setGameState(prev => {
       const newState = processItemScan(prev, item);
       
@@ -120,13 +103,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       
       return newState;
     });
-    
-    const scannerElement = document.querySelector('.scanner-btn');
-    if (scannerElement) {
-      const rect = scannerElement.getBoundingClientRect();
-      const points = Math.floor(item.price * 100);
-      showScoreAnimation(points, rect.x, rect.y - 40);
-    }
     
     setConveyorItems(prev => prev.filter(i => i.id !== item.id));
     
@@ -142,6 +118,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [onGameOver]);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
+    // Just remove the item and add a new one without increasing mistakes
     const newItem = getRandomItems(1)[0];
     
     setConveyorItems(prev => {
@@ -150,11 +127,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       return [...updatedItems, { ...newItem, location: undefined }];
     });
     
+    // Inform the user that the item was moved back to storage - no penalty
     toast.info("Item moved back to storage!");
   }, []);
   
   useEffect(() => {
-    const minItemsOnBelt = 8;
+    const minItemsOnBelt = 6;
     
     if (conveyorItems.length < minItemsOnBelt) {
       const itemsToAdd = minItemsOnBelt - conveyorItems.length;
@@ -177,7 +155,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       />
 
       <div className="flex flex-col mt-4">
-        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px] relative">
+        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px]">
           <h3 className="text-lg font-bold text-center mb-4">Supermarket Scanner</h3>
           
           {selectedItem && <SelectedItemDisplay selectedItem={selectedItem} />}
@@ -197,20 +175,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           </div>
           
           <BasketPreview itemCount={gameState.scannedItems.length} />
-          
-          {scoreAnimation.show && (
-            <div 
-              className="absolute pointer-events-none animate-bounce-up animate-fade-out flex items-center text-lg font-bold text-green-600"
-              style={{ 
-                left: `${scoreAnimation.x}px`, 
-                top: `${scoreAnimation.y}px`,
-                zIndex: 50
-              }}
-            >
-              <Plus className="text-green-600 mr-1" size={16} />
-              {scoreAnimation.value}
-            </div>
-          )}
         </div>
       </div>
     </div>
