@@ -9,7 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      conveyor_config: {
+        Row: {
+          auto_reset: boolean
+          belt_length: number
+          error_threshold: number
+          id: number
+          is_running: boolean
+          speed: number
+        }
+        Insert: {
+          auto_reset?: boolean
+          belt_length?: number
+          error_threshold?: number
+          id?: number
+          is_running?: boolean
+          speed?: number
+        }
+        Update: {
+          auto_reset?: boolean
+          belt_length?: number
+          error_threshold?: number
+          id?: number
+          is_running?: boolean
+          speed?: number
+        }
+        Relationships: []
+      }
+      conveyor_errors: {
+        Row: {
+          created_at: string
+          error_type: string
+          id: string
+          item_id: string | null
+          message: string
+        }
+        Insert: {
+          created_at?: string
+          error_type: string
+          id?: string
+          item_id?: string | null
+          message: string
+        }
+        Update: {
+          created_at?: string
+          error_type?: string
+          id?: string
+          item_id?: string | null
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conveyor_errors_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "conveyor_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conveyor_items: {
+        Row: {
+          created_at: string
+          error_count: number
+          id: string
+          name: string
+          position: number
+          processed: boolean
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number
+          id?: string
+          name: string
+          position?: number
+          processed?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number
+          id?: string
+          name?: string
+          position?: number
+          processed?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
