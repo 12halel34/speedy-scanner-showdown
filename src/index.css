@@ -150,3 +150,22 @@
   animation: throw 1.5s ease-out forwards;
 }
 
+@keyframes scorePopup {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(1);
+  }
+}
+
+.score-animation {
+  animation: scorePopup 1s ease-out forwards;
+}
+

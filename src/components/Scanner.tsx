@@ -44,18 +44,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     try {
       const item = JSON.parse(itemData) as ItemType;
       
-      // Check if the item is valid for scanning before processing
-      if (!isMarketItem(item)) {
-        toast.error(`${item.name} doesn't belong in a shopping cart!`);
-        return;
-      }
-      
-      if (!item.isScannable) {
-        toast.error(`This ${item.name} can't be scanned!`);
-        return;
-      }
-      
-      // Process the item
+      // Always pass the item to process, let GamePlay handle the logic
       onItemDrop(item);
       
       // Trigger scan animation

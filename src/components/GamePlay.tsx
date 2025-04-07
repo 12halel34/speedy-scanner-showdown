@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -7,7 +6,6 @@ import SelectedItemDisplay from './SelectedItemDisplay';
 import BasketPreview from './BasketPreview';
 import { Item as ItemType, GameState } from '@/types/game';
 import { 
-  processItemScan, 
   updateGameTime,
   saveHighScore,
   MAX_MISTAKES,
@@ -28,9 +26,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [scoreAnimation, setScoreAnimation] = useState<{ amount: number, isVisible: boolean }>({ amount: 0, isVisible: false });
   
   useEffect(() => {
-    const initialItems = getRandomItems(6).map(item => ({
+    const initialItems = getRandomItems(8).map(item => ({
       ...item,
       location: undefined
     }));
@@ -68,41 +67,49 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   
   const handleScanButtonClick = useCallback(() => {
     if (selectedItem) {
-      setGameState(prev => {
-        const newState = processItemScan(prev, selectedItem);
-        
-        if (newState.gameStatus === 'gameOver') {
-          saveHighScore(newState.score);
-          onGameOver(newState);
-        }
-        
-        return newState;
+      processSelectedItem(selectedItem);
+    }
+  }, [selectedItem]);
+
+  const processSelectedItem = (item: ItemType) => {
+    if (isMarketItem(item)) {
+      const scoreIncrease = Math.floor(item.price * 100);
+      
+      setScoreAnimation({
+        amount: scoreIncrease,
+        isVisible: true
       });
       
-      setConveyorItems(prev => prev.filter(item => item.id !== selectedItem.id));
+      setTimeout(() => {
+        setScoreAnimation(prev => ({ ...prev, isVisible: false }));
+      }, 1000);
       
-      const newItemsCount = Math.floor(Math.random() * 2) + 1;
-      const newItems = getRandomItems(newItemsCount).map(item => ({
-        ...item,
-        location: undefined
+      setGameState(prev => ({
+        ...prev,
+        score: prev.score + scoreIncrease,
+        scannedItems: [...prev.scannedItems, item]
       }));
       
-      setConveyorItems(prev => [...prev, ...newItems]);
-      setSelectedItem(null);
+      toast.success(`+${scoreIncrease} points!`);
+    } else {
+      setGameState(prev => {
+        const newMistakes = prev.mistakes + 1;
+        const newGameStatus = newMistakes >= MAX_MISTAKES ? 'gameOver' : prev.gameStatus;
+        
+        if (newGameStatus === 'gameOver') {
+          saveHighScore(prev.score);
+          setTimeout(() => onGameOver({...prev, mistakes: newMistakes, gameStatus: 'gameOver'}), 500);
+        }
+        
+        toast.error(`Strike ${newMistakes}/${MAX_MISTAKES}! This item doesn't belong in a supermarket!`);
+        
+        return {
+          ...prev,
+          mistakes: newMistakes,
+          gameStatus: newGameStatus
+        };
+      });
     }
-  }, [selectedItem, onGameOver]);
-
-  const handleItemDropOnScanner = useCallback((item: ItemType) => {
-    setGameState(prev => {
-      const newState = processItemScan(prev, item);
-      
-      if (newState.gameStatus === 'gameOver') {
-        saveHighScore(newState.score);
-        onGameOver(newState);
-      }
-      
-      return newState;
-    });
     
     setConveyorItems(prev => prev.filter(i => i.id !== item.id));
     
@@ -115,10 +122,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     setConveyorItems(prev => [...prev, ...newItems]);
     
     setSelectedItem(null);
-  }, [onGameOver]);
+  };
+
+  const handleItemDropOnScanner = useCallback((item: ItemType) => {
+    processSelectedItem(item);
+  }, []);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
-    // Just remove the item and add a new one without increasing mistakes
     const newItem = getRandomItems(1)[0];
     
     setConveyorItems(prev => {
@@ -127,12 +137,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       return [...updatedItems, { ...newItem, location: undefined }];
     });
     
-    // Inform the user that the item was moved back to storage - no penalty
     toast.info("Item moved back to storage!");
   }, []);
   
   useEffect(() => {
-    const minItemsOnBelt = 6;
+    const minItemsOnBelt = 8;
+    const maxItemsOnBelt = 12;
     
     if (conveyorItems.length < minItemsOnBelt) {
       const itemsToAdd = minItemsOnBelt - conveyorItems.length;
@@ -142,6 +152,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       }));
       
       setConveyorItems(prev => [...prev, ...newItems]);
+    } else if (conveyorItems.length > maxItemsOnBelt) {
+      setConveyorItems(prev => prev.slice(-maxItemsOnBelt));
     }
   }, [conveyorItems.length]);
   
@@ -167,7 +179,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
             speedMultiplier={speedMultiplier}
           />
           
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-4 relative">
+            {scoreAnimation.isVisible && (
+              <div className="absolute top-0 transform -translate-y-full text-green-500 font-bold text-xl score-animation">
+                +{scoreAnimation.amount}
+              </div>
+            )}
             <Scanner 
               onScan={handleScanButtonClick} 
               onItemDrop={handleItemDropOnScanner} 
