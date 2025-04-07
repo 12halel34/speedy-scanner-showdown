@@ -22,6 +22,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const itemWidth = 50; // Approximate width of an item in pixels
   const conveyorRef = useRef<HTMLDivElement>(null);
   const [conveyorWidth, setConveyorWidth] = useState(0);
+  const [usedPositions, setUsedPositions] = useState<number[]>([]);
   
   // Set conveyor width on mount and resize
   useEffect(() => {
@@ -56,7 +57,17 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         } else {
           // Place new items offscreen to the right with proper spacing
           // Ensure they're spaced evenly and don't overlap
-          const startPos = 100 + (index % maxItemsVisible) * 25; // Adjusted spacing
+          // Avoid positions that were recently used
+          let startPos;
+          let attempts = 0;
+          do {
+            // Start with base position then add random offset to avoid patterns
+            startPos = 100 + (index % maxItemsVisible) * 25 + (Math.random() * 10);
+            attempts++;
+            // Break after some attempts to prevent infinite loop
+            if (attempts > 10) break;
+          } while (usedPositions.some(pos => Math.abs(pos - startPos) < 15));
+          
           return {
             ...item,
             position: startPos
@@ -78,7 +89,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         return [...filteredItems, ...itemsToAdd];
       });
     }
-  }, [items, conveyorWidth]);
+  }, [items, conveyorWidth, usedPositions]);
   
   // Animation effect for moving items
   useEffect(() => {
@@ -95,6 +106,12 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         // Check for items that have reached the left edge
         const itemsToRemove = updatedItems.filter(item => item.position <= -15);
         
+        // Store positions of removed items to avoid placing new items there
+        if (itemsToRemove.length > 0) {
+          const positions = itemsToRemove.map(item => item.position);
+          setUsedPositions(prev => [...prev, ...positions].slice(-10)); // Keep last 10 positions
+        }
+        
         // Notify parent of items reaching the end
         itemsToRemove.forEach(item => {
           if (onItemReachEnd) {
@@ -109,6 +126,17 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     
     return () => clearInterval(moveInterval);
   }, [movingItems, onItemReachEnd, speedMultiplier]);
+  
+  // Track which positions were used for scanned items
+  const handleItemClick = (item: ItemType) => {
+    // Store the position of the clicked item
+    const clickedItem = movingItems.find(mi => mi.id === item.id);
+    if (clickedItem) {
+      setUsedPositions(prev => [...prev, clickedItem.position].slice(-10)); // Keep last 10 positions
+    }
+    
+    onScanItem(item);
+  };
   
   return (
     <div 
@@ -130,7 +158,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       <div className="relative h-full">
         {movingItems.map((item) => (
           <div 
-            key={`${item.id}-${Math.random()}`} 
+            key={`${item.id}-${item.position.toFixed(2)}`} 
             className="absolute"
             style={{ 
               left: `${item.position}%`,
@@ -140,7 +168,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           >
             <Item 
               item={item} 
-              onScan={onScanItem}
+              onScan={handleItemClick}
               onMove={onMoveItem}
               isDraggable={true}
               isAnimating={false} // We're handling animation ourselves
