@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -28,8 +29,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [scoreAnimation, setScoreAnimation] = useState<{ amount: number, isVisible: boolean }>({ amount: 0, isVisible: false });
   const speedIncreaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const minConveyorItems = 10; // Increased minimum items
-  const maxConveyorItems = 15; // Increased maximum items
+  const minConveyorItems = 15; // Increased from 10 to 15
+  const maxConveyorItems = 20; // Increased from 15 to 20
   
   useEffect(() => {
     const initialItems = getRandomItems(minConveyorItems).map(item => ({

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Item as ItemType } from '@/types/game';
 import Item from './Item';
@@ -41,7 +40,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   useEffect(() => {
     if (items.length > 0 && conveyorWidth > 0) {
       // Calculate positions ensuring items don't overlap
-      const spacePerItem = itemWidth + 80; // Increased spacing between items
+      const spacePerItem = itemWidth + 60; // Reduced spacing to fit more items (was 80)
       const maxItemsVisible = Math.floor(conveyorWidth / spacePerItem);
       
       // Distribute items across the conveyor with proper spacing
@@ -56,13 +55,12 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           };
         } else {
           // Place new items offscreen to the right with proper spacing
-          // Ensure they're spaced evenly and don't overlap
           // Avoid positions that were recently used
           let startPos;
           let attempts = 0;
           do {
             // Start with base position then add random offset to avoid patterns
-            startPos = 100 + (index % maxItemsVisible) * 25 + (Math.random() * 10);
+            startPos = 100 + (index % maxItemsVisible) * 20 + (Math.random() * 15); // Reduced spacing multiplier from 25 to 20
             attempts++;
             // Break after some attempts to prevent infinite loop
             if (attempts > 10) break;

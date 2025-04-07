@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 export const GAME_TIME = 60; // 60 seconds game time
 export const MAX_MISTAKES = 3; // 3 mistakes and you're out
-export const INITIAL_ITEMS_COUNT = 8; // Initial number of items on the conveyor belt
+export const INITIAL_ITEMS_COUNT = 12; // Increased from 8 to 12 initial items
 export const USED_POSITIONS_MEMORY = 5; // Number of recently used positions to remember
 
 export const initialGameState: GameState = {
