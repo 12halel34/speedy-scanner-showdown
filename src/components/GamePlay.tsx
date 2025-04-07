@@ -27,6 +27,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [scoreAnimation, setScoreAnimation] = useState<{ amount: number, isVisible: boolean }>({ amount: 0, isVisible: false });
+  const speedIncreaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     const initialItems = getRandomItems(8).map(item => ({
@@ -35,20 +36,29 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     }));
     
     setConveyorItems(initialItems);
+    
+    speedIncreaseIntervalRef.current = setInterval(() => {
+      setSpeedMultiplier(prev => prev + 0.02);
+    }, 1000);
+    
+    return () => {
+      if (speedIncreaseIntervalRef.current) {
+        clearInterval(speedIncreaseIntervalRef.current);
+      }
+    };
   }, []);
   
   useEffect(() => {
     const timer = setInterval(() => {
       if (gameState.gameStatus === 'playing') {
-        if (gameState.timeLeft % 10 === 0 && gameState.timeLeft > 0) {
-          setSpeedMultiplier(prev => prev + 0.1);
-        }
-        
         setGameState(prev => {
           const newState = updateGameTime(prev);
           
           if (newState.gameStatus === 'gameOver') {
             clearInterval(timer);
+            if (speedIncreaseIntervalRef.current) {
+              clearInterval(speedIncreaseIntervalRef.current);
+            }
             saveHighScore(newState.score);
             onGameOver(newState);
           }
@@ -97,6 +107,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         const newGameStatus = newMistakes >= MAX_MISTAKES ? 'gameOver' : prev.gameStatus;
         
         if (newGameStatus === 'gameOver') {
+          if (speedIncreaseIntervalRef.current) {
+            clearInterval(speedIncreaseIntervalRef.current);
+          }
           saveHighScore(prev.score);
           setTimeout(() => onGameOver({...prev, mistakes: newMistakes, gameStatus: 'gameOver'}), 500);
         }

@@ -11,6 +11,7 @@ interface ItemProps {
   isAnimating?: boolean;
   isThrowable?: boolean;
   isDraggable?: boolean;
+  showPrice?: boolean;
 }
 
 const Item: React.FC<ItemProps> = ({ 
@@ -20,7 +21,8 @@ const Item: React.FC<ItemProps> = ({
   onMove,
   isAnimating = true,
   isThrowable = false,
-  isDraggable = false
+  isDraggable = false,
+  showPrice = true
 }) => {
   const handleClick = () => {
     if (isThrowable && onThrow) {
@@ -73,7 +75,7 @@ const Item: React.FC<ItemProps> = ({
       )}>
         <div className="text-4xl mb-1">{item.image}</div>
         <div className="text-xs font-medium truncate w-full text-center">{item.name}</div>
-        {item.isScannable && !isThrowable && (
+        {item.isScannable && showPrice && !isThrowable && (
           <div className="text-xs text-green-600 font-bold">${item.price.toFixed(2)}</div>
         )}
       </div>

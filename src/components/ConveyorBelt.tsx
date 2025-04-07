@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Item as ItemType } from '@/types/game';
 import Item from './Item';
 
@@ -19,18 +19,49 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   speedMultiplier = 1
 }) => {
   const [movingItems, setMovingItems] = useState<(ItemType & { position: number })[]>([]);
+  const itemWidth = 50; // Approximate width of an item in pixels
+  const conveyorRef = useRef<HTMLDivElement>(null);
+  const [conveyorWidth, setConveyorWidth] = useState(0);
+  
+  // Set conveyor width on mount and resize
+  useEffect(() => {
+    const updateWidth = () => {
+      if (conveyorRef.current) {
+        setConveyorWidth(conveyorRef.current.offsetWidth);
+      }
+    };
+    
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
   
   // Update items when the items prop changes
   useEffect(() => {
-    if (items.length > 0) {
-      // Map the new items to have positions
-      const newItemsWithPosition = items.map(item => {
+    if (items.length > 0 && conveyorWidth > 0) {
+      // Calculate positions ensuring items don't overlap
+      const spacePerItem = itemWidth + 60; // Add margin between items
+      const maxItemsVisible = Math.floor(conveyorWidth / spacePerItem);
+      
+      // Distribute items across the conveyor with proper spacing
+      const newItemsWithPosition = items.map((item, index) => {
         // Check if the item already exists in movingItems
         const existingItem = movingItems.find(mi => mi.id === item.id);
-        return {
-          ...item,
-          position: existingItem ? existingItem.position : 100 // Start new items from the right
-        };
+        
+        if (existingItem) {
+          return {
+            ...item,
+            position: existingItem.position
+          };
+        } else {
+          // Place new items offscreen to the right with proper spacing
+          // Ensure they're spaced evenly and don't overlap
+          const startPos = 100 + (index % maxItemsVisible) * 20;
+          return {
+            ...item,
+            position: startPos
+          };
+        }
       });
       
       setMovingItems(prevItems => {
@@ -47,7 +78,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         return [...filteredItems, ...itemsToAdd];
       });
     }
-  }, [items]);
+  }, [items, conveyorWidth]);
   
   // Animation effect for moving items
   useEffect(() => {
@@ -58,7 +89,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         // Move each item to the left with speedMultiplier affecting the speed
         const updatedItems = prevItems.map(item => ({
           ...item,
-          position: item.position - (0.5 * speedMultiplier) // Speed increases with the multiplier
+          position: item.position - (0.3 * speedMultiplier) // Base speed reduced and affected by multiplier
         }));
         
         // Check for items that have reached the left edge
@@ -80,7 +111,10 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   }, [movingItems, onItemReachEnd, speedMultiplier]);
   
   return (
-    <div className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner">
+    <div 
+      ref={conveyorRef}
+      className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner"
+    >
       {/* Conveyor belt stripes */}
       <div className="absolute inset-0 flex">
         {Array.from({ length: 20 }).map((_, index) => (
@@ -110,6 +144,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
               onMove={onMoveItem}
               isDraggable={true}
               isAnimating={false} // We're handling animation ourselves
+              showPrice={false} // Hide prices as requested
             />
           </div>
         ))}

@@ -26,7 +26,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     }, 300);
   };
   
-  const handleDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setIsDropTarget(true);
@@ -36,7 +36,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setIsDropTarget(false);
   };
   
-  const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDropTarget(false);
     
@@ -60,12 +60,19 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   
   return (
     <div className="relative flex flex-col items-center">
-      <button 
-        onClick={handleScan}
+      <div 
+        className={`flex flex-col items-center justify-center bg-gray-100 border-2 border-dashed ${isDropTarget ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg p-4 mb-4 h-32 w-32 transition-colors`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95 ${isDropTarget ? 'ring-4 ring-yellow-300 scale-110' : ''}`}
+      >
+        <div className="text-sm text-gray-500 text-center mb-2">Drop items here</div>
+        <div className="text-3xl">🛒</div>
+      </div>
+
+      <button 
+        onClick={handleScan}
+        className={`bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95`}
         disabled={isScanning}
       >
         <Scan size={40} />
