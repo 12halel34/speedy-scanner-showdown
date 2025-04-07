@@ -40,7 +40,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   useEffect(() => {
     if (items.length > 0 && conveyorWidth > 0) {
       // Calculate positions ensuring items don't overlap
-      const spacePerItem = itemWidth + 60; // Add margin between items
+      const spacePerItem = itemWidth + 80; // Increased spacing between items
       const maxItemsVisible = Math.floor(conveyorWidth / spacePerItem);
       
       // Distribute items across the conveyor with proper spacing
@@ -56,7 +56,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         } else {
           // Place new items offscreen to the right with proper spacing
           // Ensure they're spaced evenly and don't overlap
-          const startPos = 100 + (index % maxItemsVisible) * 20;
+          const startPos = 100 + (index % maxItemsVisible) * 25; // Adjusted spacing
           return {
             ...item,
             position: startPos
@@ -89,7 +89,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         // Move each item to the left with speedMultiplier affecting the speed
         const updatedItems = prevItems.map(item => ({
           ...item,
-          position: item.position - (0.3 * speedMultiplier) // Base speed reduced and affected by multiplier
+          position: item.position - (0.4 * speedMultiplier) // Increased base speed
         }));
         
         // Check for items that have reached the left edge
