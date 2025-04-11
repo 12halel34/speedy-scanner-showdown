@@ -57,7 +57,7 @@ const Item: React.FC<ItemProps> = ({
   return (
     <div 
       className={cn(
-        "relative cursor-pointer transform transition-transform duration-200 hover:scale-110",
+        "relative cursor-pointer transform transition-all duration-200 hover:scale-110 active:scale-95",
         isAnimating && "conveyor-animation",
         isThrowable && "throwable-item",
         isDraggable && "cursor-grab active:cursor-grabbing"
@@ -65,8 +65,8 @@ const Item: React.FC<ItemProps> = ({
       onClick={handleClick}
       draggable={isDraggable}
       onDragStart={handleDragStart}
-      aria-label={`Drag ${item.name} to scanner`}
-      title="Drag to scanner"
+      aria-label={`${item.name}`}
+      title={isDraggable ? "Drag to scanner" : item.name}
     >
       <div className={cn(
         "flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-md hover:shadow-lg w-20 h-24",

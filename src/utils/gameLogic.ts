@@ -1,11 +1,12 @@
+
 import { GameState, Item } from '@/types/game';
 import { getRandomItems, getRandomVegetables, invalidItems } from '@/data/items';
 import { toast } from 'sonner';
 
 export const GAME_TIME = 60; // 60 seconds game time
 export const MAX_MISTAKES = 3; // 3 mistakes and you're out
-export const INITIAL_ITEMS_COUNT = 12; // Increased from 8 to 12 initial items
-export const USED_POSITIONS_MEMORY = 15; // Increased from 5 to 15 recently used positions to remember
+export const INITIAL_ITEMS_COUNT = 12; // Initial items count
+export const USED_POSITIONS_MEMORY = 30; // Remember 30 recently used positions
 
 export const initialGameState: GameState = {
   score: 0,
@@ -31,11 +32,16 @@ export const initGame = (): GameState => {
   const savedHighScore = localStorage.getItem('cashier2000HighScore');
   const highScore = savedHighScore ? parseInt(savedHighScore, 10) : 0;
   
-  // Get initial items and randomly assign them to left or right
-  const items = getRandomItems(INITIAL_ITEMS_COUNT).map(item => {
+  // Get initial items with different positions
+  const items = getRandomItems(INITIAL_ITEMS_COUNT).map((item, index) => {
+    // Calculate position to ensure items are well-spaced
     // Invalid items initially go to the wrong side (right side)
     const initialLocation: 'left' | 'right' = isMarketItem(item) ? 'right' : 'right';
-    return { ...item, location: initialLocation };
+    
+    return { 
+      ...item, 
+      location: initialLocation
+    };
   });
   
   return {
@@ -99,16 +105,29 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   // Remove the scanned item and add new items including a higher chance of vegetables
   const updatedItems = state.items.filter(i => i.id !== item.id);
   
-  // Get 1-2 random items with standard distribution
-  const newRegularItems = getRandomItems(Math.floor(Math.random() * 2) + 1)
-    .map(item => ({...item, location: 'right' as const})); // Explicitly typed as const
+  // Get random items with varied distribution to ensure they appear at different positions
+  const newItemsCount = Math.floor(Math.random() * 2) + 1; // 1-2 new items
   
-  // Get 1-2 vegetables specifically
+  // Get regular items
+  const newRegularItems = getRandomItems(newItemsCount)
+    .map(item => ({
+      ...item, 
+      location: 'right' as const,
+      // Add some randomization to ensure items don't appear in same spot
+      _positionOffset: Math.random() * 20
+    })); 
+  
+  // Get vegetables specifically
   const newVegetables = getRandomVegetables(Math.floor(Math.random() * 2) + 1)
-    .map(item => ({...item, location: 'right' as const})); // Explicitly typed as const
+    .map(item => ({
+      ...item, 
+      location: 'right' as const,
+      // Add some randomization to ensure items don't appear in same spot
+      _positionOffset: Math.random() * 20 + 20 // Different offset range
+    }));
   
-  // Combine all new items
-  const newItems = [...updatedItems, ...newRegularItems, ...newVegetables];
+  // Combine all new items, removing any temporary positioning properties
+  const newItems = [...updatedItems, ...newRegularItems, ...newVegetables].map(({_positionOffset, ...item}) => item);
   
   return {
     ...state,

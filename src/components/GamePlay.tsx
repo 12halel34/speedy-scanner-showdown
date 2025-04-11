@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -29,8 +28,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [scoreAnimation, setScoreAnimation] = useState<{ amount: number, isVisible: boolean }>({ amount: 0, isVisible: false });
   const speedIncreaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const minConveyorItems = 15; // Increased from 10 to 15
-  const maxConveyorItems = 20; // Increased from 15 to 20
+  const minConveyorItems = 15;
+  const maxConveyorItems = 20;
   
   useEffect(() => {
     const initialItems = getRandomItems(minConveyorItems).map(item => ({
@@ -51,6 +50,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     };
   }, []);
   
+  // Setup game timer
   useEffect(() => {
     const timer = setInterval(() => {
       if (gameState.gameStatus === 'playing') {
@@ -74,6 +74,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     return () => clearInterval(timer);
   }, [gameState.gameStatus, onGameOver]);
   
+  // Maintain minimum items on conveyor
   useEffect(() => {
     if (conveyorItems.length < minConveyorItems) {
       const itemsToAdd = minConveyorItems - conveyorItems.length;
@@ -99,8 +100,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [selectedItem]);
 
   const processSelectedItem = (item: ItemType) => {
-    if (isMarketItem(item)) {
-      const scoreIncrease = Math.floor(item.price * 100);
+    // For partial items with just an ID, find the full item
+    const fullItem = item.id && !item.name ? 
+      conveyorItems.find(i => i.id === item.id) || item : 
+      item;
+    
+    if (!fullItem.name) {
+      toast.error("Couldn't identify the item!");
+      return;
+    }
+    
+    if (isMarketItem(fullItem)) {
+      const scoreIncrease = Math.floor(fullItem.price * 100);
       
       setScoreAnimation({
         amount: scoreIncrease,
@@ -114,7 +125,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setGameState(prev => ({
         ...prev,
         score: prev.score + scoreIncrease,
-        scannedItems: [...prev.scannedItems, item]
+        scannedItems: [...prev.scannedItems, fullItem]
       }));
       
       toast.success(`+${scoreIncrease} points!`);
@@ -141,8 +152,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       });
     }
     
-    setConveyorItems(prev => prev.filter(i => i.id !== item.id));
+    // Remove the scanned item
+    setConveyorItems(prev => prev.filter(i => i.id !== fullItem.id));
     
+    // Generate new items with delay to prevent appearing in the same spot
     const newItemsCount = Math.floor(Math.random() * 2) + 1;
     
     setTimeout(() => {
@@ -152,21 +165,23 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       }));
       
       setConveyorItems(prev => [...prev, ...newItems]);
-    }, 200);
+    }, 300);  // Slightly longer delay to ensure positions are updated
     
     setSelectedItem(null);
   };
 
   const handleItemDropOnScanner = useCallback((item: ItemType) => {
     processSelectedItem(item);
-  }, []);
+  }, [conveyorItems]);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
     setConveyorItems(prev => prev.filter(i => i.id !== item.id));
     
-    const newItem = getRandomItems(1)[0];
-    
-    setConveyorItems(prev => [...prev, { ...newItem, location: undefined }]);
+    // Delayed addition of new items to avoid position conflicts
+    setTimeout(() => {
+      const newItem = getRandomItems(1)[0];
+      setConveyorItems(prev => [...prev, { ...newItem, location: undefined }]);
+    }, 300);
     
     toast.info("Item moved back to storage!");
   }, []);

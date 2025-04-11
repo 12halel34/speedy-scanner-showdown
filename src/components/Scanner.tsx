@@ -40,12 +40,22 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     e.preventDefault();
     setIsDropTarget(false);
     
+    // Check for both item data formats (direct object or ID)
     const itemData = e.dataTransfer.getData('text/plain');
+    const itemId = e.dataTransfer.getData('itemId');
+    
     try {
-      const item = JSON.parse(itemData) as ItemType;
-      
-      // Always pass the item to process, let GamePlay handle the logic
-      onItemDrop(item);
+      // If we have JSON item data, use that
+      if (itemData) {
+        const item = JSON.parse(itemData) as ItemType;
+        onItemDrop(item);
+      } 
+      // If we have an itemId from the conveyor belt, pass that to the parent
+      else if (itemId) {
+        // The onItemDrop handler will need to find the item by ID
+        // We'll pass a minimal item with just the ID, and let the parent component handle it
+        onItemDrop({ id: itemId } as ItemType);
+      }
       
       // Trigger scan animation
       setIsScanning(true);
@@ -53,7 +63,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
         setIsScanning(false);
       }, 300);
     } catch (error) {
-      console.error('Error parsing dragged item:', error);
+      console.error('Error processing dragged item:', error);
       toast.error('Failed to process item');
     }
   };
