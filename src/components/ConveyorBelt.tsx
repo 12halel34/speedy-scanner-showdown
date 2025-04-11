@@ -25,6 +25,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const [usedPositions, setUsedPositions] = useState<{x: number, y: number}[]>([]);
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [draggedPosition, setDraggedPosition] = useState<{x: number, y: number} | null>(null);
+  const [ghostImage, setGhostImage] = useState<HTMLElement | null>(null);
   
   // Set conveyor dimensions on mount and resize
   useEffect(() => {
@@ -171,6 +172,54 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     return () => clearInterval(moveInterval);
   }, [movingItems, onItemReachEnd, speedMultiplier, isDragging]);
   
+  // Create visible ghost element for drag operation
+  useEffect(() => {
+    if (!ghostImage) {
+      const img = document.createElement('div');
+      img.className = 'drag-ghost fixed pointer-events-none z-50 opacity-80 scale-110';
+      img.style.display = 'none';
+      document.body.appendChild(img);
+      setGhostImage(img);
+    }
+    
+    return () => {
+      if (ghostImage) {
+        document.body.removeChild(ghostImage);
+      }
+    };
+  }, [ghostImage]);
+  
+  // Update ghost image position during drag
+  useEffect(() => {
+    const updateGhostPosition = (e: MouseEvent) => {
+      if (isDragging && ghostImage) {
+        const item = movingItems.find(item => item.id === isDragging);
+        if (item) {
+          ghostImage.style.display = 'block';
+          ghostImage.style.left = `${e.clientX}px`;
+          ghostImage.style.top = `${e.clientY}px`;
+          ghostImage.style.transform = 'translate(-50%, -50%)';
+          ghostImage.innerHTML = item.image;
+          ghostImage.style.fontSize = '2.5em';
+        }
+      }
+    };
+    
+    const handleMouseUp = () => {
+      if (ghostImage) {
+        ghostImage.style.display = 'none';
+      }
+    };
+    
+    window.addEventListener('mousemove', updateGhostPosition);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', updateGhostPosition);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, ghostImage, movingItems]);
+  
   // Improved drag handling for items on the conveyor
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setIsDragging(itemId);
@@ -182,9 +231,36 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     
     // Add the item data to the drag event
     e.dataTransfer.setData('itemId', itemId);
+    
+    // Find the dragged item
+    const draggedItem = movingItems.find(item => item.id === itemId);
+    if (draggedItem && ghostImage) {
+      ghostImage.innerHTML = draggedItem.image;
+      ghostImage.style.display = 'block';
+    }
   };
   
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: React.DragEvent) => {
+    const draggedItem = movingItems.find(item => item.id === isDragging);
+    
+    // When drag ends, keep the item in its final position but resume conveyor movement
+    if (draggedItem && draggedPosition) {
+      setMovingItems(prevItems => prevItems.map(item => {
+        if (item.id === isDragging) {
+          return {
+            ...item,
+            position: draggedPosition.x,
+            yPosition: draggedPosition.y
+          };
+        }
+        return item;
+      }));
+    }
+    
+    if (ghostImage) {
+      ghostImage.style.display = 'none';
+    }
+    
     setIsDragging(null);
     setDraggedPosition(null);
   };
@@ -219,6 +295,28 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         return item;
       });
     });
+  };
+  
+  // Track mouse position for drag operations outside the conveyor
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && conveyorRef.current) {
+      const rect = conveyorRef.current.getBoundingClientRect();
+      
+      // Check if mouse is outside the conveyor
+      if (
+        e.clientX < rect.left || 
+        e.clientX > rect.right || 
+        e.clientY < rect.top || 
+        e.clientY > rect.bottom
+      ) {
+        // Still update the ghost image position
+        if (ghostImage) {
+          ghostImage.style.display = 'block';
+          ghostImage.style.left = `${e.clientX}px`;
+          ghostImage.style.top = `${e.clientY}px`;
+        }
+      }
+    }
   };
   
   // Handle item scanning with improved position tracking
@@ -256,6 +354,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       ref={conveyorRef}
       className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner"
       onDragOver={handleDragOver}
+      onMouseMove={handleMouseMove}
     >
       {/* Conveyor belt stripes */}
       <div className="absolute inset-0 flex">
@@ -273,7 +372,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         {movingItems.map((item) => (
           <div 
             key={`${item.id}-${item.position.toFixed(1)}-${item.yPosition.toFixed(1)}`} 
-            className="absolute"
+            className="absolute transition-all duration-200"
             style={{ 
               left: `${item.position}%`,
               top: `${item.yPosition}%`,

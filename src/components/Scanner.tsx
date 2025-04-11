@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Scan } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
 import { toast } from 'sonner';
@@ -13,6 +13,29 @@ interface ScannerProps {
 const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
+  const [ghostVisible, setGhostVisible] = useState(false);
+  
+  // Track when an item is being dragged over the entire document
+  useEffect(() => {
+    const handleDragEnterDocument = () => {
+      setGhostVisible(true);
+    };
+    
+    const handleDragLeaveDocument = () => {
+      // Only hide ghost when actually leaving the document
+      if (!document.querySelector('.dragging-over-scanner')) {
+        setGhostVisible(false);
+      }
+    };
+    
+    document.addEventListener('dragenter', handleDragEnterDocument);
+    document.addEventListener('dragleave', handleDragLeaveDocument);
+    
+    return () => {
+      document.removeEventListener('dragenter', handleDragEnterDocument);
+      document.removeEventListener('dragleave', handleDragLeaveDocument);
+    };
+  }, []);
   
   const handleScan = () => {
     if (isScanning) return;
@@ -30,15 +53,20 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setIsDropTarget(true);
+    
+    // Add a class to indicate dragging over scanner
+    e.currentTarget.classList.add('dragging-over-scanner');
   };
   
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     setIsDropTarget(false);
+    e.currentTarget.classList.remove('dragging-over-scanner');
   };
   
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDropTarget(false);
+    e.currentTarget.classList.remove('dragging-over-scanner');
     
     // Check for both item data formats (direct object or ID)
     const itemData = e.dataTransfer.getData('text/plain');
