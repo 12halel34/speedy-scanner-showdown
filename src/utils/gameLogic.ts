@@ -1,4 +1,3 @@
-
 import { GameState, Item } from '@/types/game';
 import { getRandomItems, getRandomVegetables, invalidItems } from '@/data/items';
 import { toast } from 'sonner';
@@ -112,22 +111,18 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   const newRegularItems = getRandomItems(newItemsCount)
     .map(item => ({
       ...item, 
-      location: 'right' as const,
-      // Add some randomization to ensure items don't appear in same spot
-      _positionOffset: Math.random() * 20
+      location: 'right' as const
     })); 
   
   // Get vegetables specifically
   const newVegetables = getRandomVegetables(Math.floor(Math.random() * 2) + 1)
     .map(item => ({
       ...item, 
-      location: 'right' as const,
-      // Add some randomization to ensure items don't appear in same spot
-      _positionOffset: Math.random() * 20 + 20 // Different offset range
+      location: 'right' as const
     }));
   
-  // Combine all new items, removing any temporary positioning properties
-  const newItems = [...updatedItems, ...newRegularItems, ...newVegetables].map(({_positionOffset, ...item}) => item);
+  // Combine all new items - fixed to avoid using _positionOffset which doesn't exist in the Item type
+  const newItems = [...updatedItems, ...newRegularItems, ...newVegetables];
   
   return {
     ...state,
