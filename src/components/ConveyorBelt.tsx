@@ -18,7 +18,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   speedMultiplier = 1
 }) => {
   const [movingItems, setMovingItems] = useState<(ItemType & { position: number, yPosition: number })[]>([]);
-  const itemWidth = 50; // Approximate width of an item in pixels
+  const itemWidth = 60; // Increased from 50 to 60 for better spacing
   const conveyorRef = useRef<HTMLDivElement>(null);
   const [conveyorWidth, setConveyorWidth] = useState(0);
   const [conveyorHeight, setConveyorHeight] = useState(0);
@@ -40,11 +40,11 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Helper to determine if a position is already occupied
+  // Helper to determine if a position is already occupied - improved with larger buffer
   const isPositionOccupied = (x: number, y: number): boolean => {
-    // Check against recently used positions with a larger buffer zone
+    // Increased buffer zone from 60 to 80 pixels
     return usedPositions.some(pos => 
-      Math.abs(pos.x - x) < 60 && Math.abs(pos.y - y) < 60
+      Math.abs(pos.x - x) < 80 && Math.abs(pos.y - y) < 80
     );
   };
   
@@ -57,14 +57,14 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         y: item.yPosition
       }));
       
-      // Update used positions
+      // Update used positions with better memory
       setUsedPositions(prev => {
         const updatedPositions = [...prev];
-        // Keep only the 30 most recent positions to prevent the array from growing too large
-        return [...currentPositions, ...updatedPositions].slice(0, 30);
+        // Keep only the 50 most recent positions (increased from 30)
+        return [...currentPositions, ...updatedPositions].slice(0, 50);
       });
       
-      // Distribute items across the conveyor with proper spacing
+      // Distribute items across the conveyor with improved spacing
       const newItemsWithPosition = items.map(item => {
         // Check if the item already exists in movingItems
         const existingItem = movingItems.find(mi => mi.id === item.id);
@@ -76,34 +76,40 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
             yPosition: existingItem.yPosition
           };
         } else {
-          // Find an available position for new items
+          // Find an available position for new items with improved algorithm
           let x, y;
           let attempts = 0;
+          let maxAttempts = 40; // Increased from 25
           
           do {
-            // Position starts from right side (90-110%) and random vertical position (10-90% of height)
-            x = 90 + Math.random() * 20; // 90-110% of conveyor width
-            y = 10 + Math.random() * 80; // 10-90% of conveyor height
+            // Position starts farther right (110-140%) and better vertical distribution
+            x = 110 + Math.random() * 30; // Start further right to ensure spacing
+            
+            // Distribute vertically with better spacing - limit to 20-80% of height
+            y = 20 + Math.random() * 60; 
             attempts++;
             
             // Break after reasonable attempts to prevent infinite loop
-            if (attempts > 25) {
-              // If we can't find a non-overlapping position after many attempts,
-              // place it far to the right to ensure it's off-screen
-              x = 110 + Math.random() * 30;
+            if (attempts > maxAttempts) {
+              // If we can't find a non-overlapping position, place it far to the right
+              x = 140 + Math.random() * 40;
               break;
             }
           } while (isPositionOccupied(x, y));
           
-          // Add this position to used positions
+          // Add this position and surrounding buffer areas to used positions
+          const bufferPoints = [];
+          // Create a grid of buffer points around the item position
+          for (let bx = -40; bx <= 40; bx += 20) {
+            for (let by = -40; by <= 40; by += 20) {
+              bufferPoints.push({ x: x + bx, y: y + by });
+            }
+          }
+          
           setUsedPositions(prev => [
             ...prev,
-            { x, y },
-            { x: x - 10, y }, // Add buffer zones
-            { x: x + 10, y },
-            { x, y: y - 10 },
-            { x, y: y + 10 }
-          ].slice(0, 50));
+            ...bufferPoints
+          ].slice(0, 100)); // Increased buffer memory
           
           return {
             ...item,
@@ -165,13 +171,13 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     return () => clearInterval(moveInterval);
   }, [movingItems, onItemReachEnd, speedMultiplier, isDragging]);
   
-  // Handle dragging items on the conveyor
+  // Improved drag handling for items on the conveyor
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setIsDragging(itemId);
     
-    // Set up the drag image
+    // Set up the drag image (blank transparent image)
     const dragImg = new Image();
-    dragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1px transparent gif
+    dragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     e.dataTransfer.setDragImage(dragImg, 0, 0);
     
     // Add the item data to the drag event
@@ -215,7 +221,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     });
   };
   
-  // Handle item scanning with position tracking
+  // Handle item scanning with improved position tracking
   const handleItemClick = (item: ItemType) => {
     // Store the position of the clicked item to avoid placing new items there
     const clickedItem = movingItems.find(mi => mi.id === item.id);
@@ -224,10 +230,10 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       const position = clickedItem.position;
       const yPosition = clickedItem.yPosition;
       
-      // Add multiple points in a grid pattern around the scanned item
+      // Add multiple points in a larger grid pattern around the scanned item
       const forbiddenPositions = [];
-      for (let xOffset = -30; xOffset <= 30; xOffset += 10) {
-        for (let yOffset = -30; yOffset <= 30; yOffset += 10) {
+      for (let xOffset = -50; xOffset <= 50; xOffset += 10) {
+        for (let yOffset = -50; yOffset <= 50; yOffset += 10) {
           forbiddenPositions.push({
             x: position + xOffset,
             y: yPosition + yOffset
@@ -235,7 +241,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         }
       }
       
-      setUsedPositions(prev => [...prev, ...forbiddenPositions].slice(0, 50));
+      setUsedPositions(prev => [...prev, ...forbiddenPositions].slice(0, 100));
     }
     
     // Remove the item from movingItems
@@ -263,7 +269,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       </div>
       
       {/* Items on the belt with guaranteed unique keys */}
-      <div className="relative h-full">
+      <div className="relative h-full w-full">
         {movingItems.map((item) => (
           <div 
             key={`${item.id}-${item.position.toFixed(1)}-${item.yPosition.toFixed(1)}`} 
