@@ -18,7 +18,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   speedMultiplier = 1
 }) => {
   const [movingItems, setMovingItems] = useState<(ItemType & { position: number, yPosition: number })[]>([]);
-  const itemWidth = 60; // Increased from 50 to 60 for better spacing
+  const itemWidth = 60;
   const conveyorRef = useRef<HTMLDivElement>(null);
   const [conveyorWidth, setConveyorWidth] = useState(0);
   const [conveyorHeight, setConveyorHeight] = useState(0);
@@ -415,7 +415,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
             style={{ 
               left: `${item.position}%`,
               top: `${item.yPosition}%`,
-              transform: 'translate(-50%, -50%)`,
+              transform: 'translate(-50%, -50%)',
               cursor: 'pointer'
             }}
           >
