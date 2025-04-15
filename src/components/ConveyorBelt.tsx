@@ -25,14 +25,12 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const [usedPositions, setUsedPositions] = useState<{x: number, y: number}[]>([]);
   
   const [isDragging, setIsDragging] = useState<string | null>(null);
-  const [draggedPosition, setDraggedPosition] = useState<{x: number, y: number} | null>(null);
   const [ghostImage, setGhostImage] = useState<HTMLElement | null>(null);
   const [draggingInfo, setDraggingInfo] = useState<{
     itemId: string;
     initialX: number;
     initialY: number;
     freeDragging: boolean;
-    element: HTMLElement | null;
   } | null>(null);
   
   useEffect(() => {
@@ -190,9 +188,9 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         }
         
         const scanners = document.querySelectorAll('.scanner-drop-area');
-        let isOverScanner = false;
-        
         scanners.forEach(scanner => {
+          if (!scanner) return;
+          
           const rect = scanner.getBoundingClientRect();
           if (
             e.clientX >= rect.left && 
@@ -200,7 +198,6 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
             e.clientY >= rect.top && 
             e.clientY <= rect.bottom
           ) {
-            isOverScanner = true;
             scanner.classList.add('scan-area-highlight');
           } else {
             scanner.classList.remove('scan-area-highlight');
@@ -264,6 +261,8 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         let scanner: Element | null = null;
         
         scanners.forEach(s => {
+          if (!s) return;
+          
           const rect = s.getBoundingClientRect();
           if (
             e.clientX >= rect.left && 
@@ -281,7 +280,6 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           const item = movingItems.find(item => item.id === draggingInfo.itemId);
           if (item) {
             onScanItem(item);
-            
             setMovingItems(prev => prev.filter(i => i.id !== item.id));
           }
         } else {
@@ -324,9 +322,9 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         }
       }
       
-      if (draggingInfo.element) {
-        draggingInfo.element.classList.remove('item-being-dragged');
-      }
+      document.querySelectorAll('.item-being-dragged').forEach(el => {
+        el.classList.remove('item-being-dragged');
+      });
       
       if (ghostImage) {
         ghostImage.style.display = 'none';
@@ -350,20 +348,25 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   }, [draggingInfo, ghostImage, movingItems, onScanItem]);
   
   const handleLongPress = (item: ItemType, e: React.MouseEvent) => {
-    const element = e.currentTarget as HTMLElement;
-    element.classList.add('item-being-dragged');
-    
-    const movingItem = movingItems.find(mi => mi.id === item.id);
-    if (!movingItem) return;
-    
-    setIsDragging(item.id);
-    setDraggingInfo({
-      itemId: item.id,
-      initialX: movingItem.position,
-      initialY: movingItem.yPosition,
-      freeDragging: false,
-      element
-    });
+    try {
+      const element = e.currentTarget as HTMLElement;
+      if (element && element.classList) {
+        element.classList.add('item-being-dragged');
+      }
+      
+      const movingItem = movingItems.find(mi => mi.id === item.id);
+      if (!movingItem) return;
+      
+      setIsDragging(item.id);
+      setDraggingInfo({
+        itemId: item.id,
+        initialX: movingItem.position,
+        initialY: movingItem.yPosition,
+        freeDragging: false
+      });
+    } catch (error) {
+      console.error("Error in handleLongPress:", error);
+    }
   };
   
   const handleItemClick = (item: ItemType) => {

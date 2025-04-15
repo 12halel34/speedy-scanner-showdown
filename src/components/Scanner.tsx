@@ -56,6 +56,8 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     
     // Add a class to indicate dragging over scanner
     e.currentTarget.classList.add('dragging-over-scanner');
+    // Add scanner-drop-area class for general detection
+    e.currentTarget.classList.add('scanner-drop-area');
   };
   
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
@@ -99,7 +101,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   return (
     <div className="relative flex flex-col items-center">
       <div 
-        className={`flex flex-col items-center justify-center bg-gray-100 border-2 border-dashed ${isDropTarget ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg p-4 mb-4 h-32 w-32 transition-colors`}
+        className={`flex flex-col items-center justify-center bg-gray-100 border-2 border-dashed ${isDropTarget ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg p-4 mb-4 h-32 w-32 transition-colors scanner-drop-area`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

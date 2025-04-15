@@ -54,7 +54,9 @@ const Item: React.FC<ItemProps> = ({
       
       // Remove the ghost element after a short delay
       setTimeout(() => {
-        document.body.removeChild(dragImage);
+        if (document.body.contains(dragImage)) {
+          document.body.removeChild(dragImage);
+        }
       }, 100);
     }
   };
@@ -68,18 +70,25 @@ const Item: React.FC<ItemProps> = ({
     // Set a timer for long press (500ms)
     const timer = setTimeout(() => {
       // Call the long press handler and pass the event
-      onLongPress(item, e);
-      
-      // Add pulse animation to indicate item is being grabbed
-      const element = e.currentTarget as HTMLElement;
-      element.classList.add('pulse-grab');
-      
-      // Remove the animation class after it completes
-      setTimeout(() => {
-        element.classList.remove('pulse-grab');
-      }, 800);
-      
-    }, 500);
+      try {
+        onLongPress(item, e);
+        
+        // Add pulse animation to indicate item is being grabbed
+        const element = e.currentTarget as HTMLElement;
+        if (element && element.classList) {
+          element.classList.add('pulse-grab');
+          
+          // Remove the animation class after it completes
+          setTimeout(() => {
+            if (element && element.classList) {
+              element.classList.remove('pulse-grab');
+            }
+          }, 800);
+        }
+      } catch (error) {
+        console.error("Error in handleMouseDown:", error);
+      }
+    }, 200); // Reduced from 500ms to 200ms for faster response
     
     setPressTimer(timer);
   };
