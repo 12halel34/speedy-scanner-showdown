@@ -23,11 +23,18 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const [conveyorWidth, setConveyorWidth] = useState(0);
   const [conveyorHeight, setConveyorHeight] = useState(0);
   const [usedPositions, setUsedPositions] = useState<{x: number, y: number}[]>([]);
+  
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [draggedPosition, setDraggedPosition] = useState<{x: number, y: number} | null>(null);
   const [ghostImage, setGhostImage] = useState<HTMLElement | null>(null);
+  const [draggingInfo, setDraggingInfo] = useState<{
+    itemId: string;
+    initialX: number;
+    initialY: number;
+    freeDragging: boolean;
+    element: HTMLElement | null;
+  } | null>(null);
   
-  // Set conveyor dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
       if (conveyorRef.current) {
@@ -41,33 +48,25 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Helper to determine if a position is already occupied - improved with larger buffer
   const isPositionOccupied = (x: number, y: number): boolean => {
-    // Increased buffer zone from 60 to 80 pixels
     return usedPositions.some(pos => 
       Math.abs(pos.x - x) < 80 && Math.abs(pos.y - y) < 80
     );
   };
   
-  // Update items when the items prop changes
   useEffect(() => {
     if (items.length > 0 && conveyorWidth > 0 && conveyorHeight > 0) {
-      // Calculate currently occupied positions to prevent overlap
       const currentPositions = movingItems.map(item => ({
         x: item.position,
         y: item.yPosition
       }));
       
-      // Update used positions with better memory
       setUsedPositions(prev => {
         const updatedPositions = [...prev];
-        // Keep only the 50 most recent positions (increased from 30)
         return [...currentPositions, ...updatedPositions].slice(0, 50);
       });
       
-      // Distribute items across the conveyor with improved spacing
       const newItemsWithPosition = items.map(item => {
-        // Check if the item already exists in movingItems
         const existingItem = movingItems.find(mi => mi.id === item.id);
         
         if (existingItem) {
@@ -77,30 +76,22 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
             yPosition: existingItem.yPosition
           };
         } else {
-          // Find an available position for new items with improved algorithm
           let x, y;
           let attempts = 0;
-          let maxAttempts = 40; // Increased from 25
+          let maxAttempts = 40;
           
           do {
-            // Position starts farther right (110-140%) and better vertical distribution
-            x = 110 + Math.random() * 30; // Start further right to ensure spacing
-            
-            // Distribute vertically with better spacing - limit to 20-80% of height
-            y = 20 + Math.random() * 60; 
+            x = 110 + Math.random() * 30;
+            y = 20 + Math.random() * 60;
             attempts++;
             
-            // Break after reasonable attempts to prevent infinite loop
             if (attempts > maxAttempts) {
-              // If we can't find a non-overlapping position, place it far to the right
               x = 140 + Math.random() * 40;
               break;
             }
           } while (isPositionOccupied(x, y));
           
-          // Add this position and surrounding buffer areas to used positions
           const bufferPoints = [];
-          // Create a grid of buffer points around the item position
           for (let bx = -40; bx <= 40; bx += 20) {
             for (let by = -40; by <= 40; by += 20) {
               bufferPoints.push({ x: x + bx, y: y + by });
@@ -110,7 +101,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           setUsedPositions(prev => [
             ...prev,
             ...bufferPoints
-          ].slice(0, 100)); // Increased buffer memory
+          ].slice(0, 100));
           
           return {
             ...item,
@@ -121,12 +112,10 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       });
       
       setMovingItems(prevItems => {
-        // Filter out items that no longer exist in the incoming items
         const filteredItems = prevItems.filter(item => 
           newItemsWithPosition.some(ni => ni.id === item.id)
         );
         
-        // Add any new items that aren't already in the moving items
         const itemsToAdd = newItemsWithPosition.filter(item => 
           !filteredItems.some(fi => fi.id === item.id)
         );
@@ -136,43 +125,36 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     }
   }, [items, conveyorWidth, conveyorHeight]);
   
-  // Animation effect for moving items
   useEffect(() => {
     if (movingItems.length === 0) return;
     
     const moveInterval = setInterval(() => {
       setMovingItems(prevItems => {
-        // Move each item to the left with speedMultiplier affecting the speed
-        // Skip moving the item that's being dragged
         const updatedItems = prevItems.map(item => {
-          if (isDragging === item.id) {
+          if (draggingInfo && draggingInfo.itemId === item.id && draggingInfo.freeDragging) {
             return item;
           }
           return {
             ...item,
-            position: item.position - (0.4 * speedMultiplier) // Base speed
+            position: item.position - (0.4 * speedMultiplier)
           };
         });
         
-        // Check for items that have reached the left edge
         const itemsToRemove = updatedItems.filter(item => item.position <= -15);
         
-        // Notify parent of items reaching the end
         itemsToRemove.forEach(item => {
           if (onItemReachEnd) {
             onItemReachEnd(item);
           }
         });
         
-        // Remove items that have gone off screen
         return updatedItems.filter(item => item.position > -15);
       });
-    }, 50); // Update every 50ms for smooth animation
+    }, 50);
     
     return () => clearInterval(moveInterval);
-  }, [movingItems, onItemReachEnd, speedMultiplier, isDragging]);
+  }, [movingItems, onItemReachEnd, speedMultiplier, draggingInfo]);
   
-  // Create visible ghost element for drag operation
   useEffect(() => {
     if (!ghostImage) {
       const img = document.createElement('div');
@@ -189,146 +171,209 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     };
   }, [ghostImage]);
   
-  // Update ghost image position during drag
   useEffect(() => {
-    const updateGhostPosition = (e: MouseEvent) => {
-      if (isDragging && ghostImage) {
-        const item = movingItems.find(item => item.id === isDragging);
+    if (!draggingInfo) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!draggingInfo) return;
+      
+      if (draggingInfo.freeDragging && ghostImage) {
+        ghostImage.style.display = 'block';
+        ghostImage.style.left = `${e.clientX}px`;
+        ghostImage.style.top = `${e.clientY}px`;
+        ghostImage.style.transform = 'translate(-50%, -50%)';
+        
+        const item = movingItems.find(item => item.id === draggingInfo.itemId);
         if (item) {
-          ghostImage.style.display = 'block';
-          ghostImage.style.left = `${e.clientX}px`;
-          ghostImage.style.top = `${e.clientY}px`;
-          ghostImage.style.transform = 'translate(-50%, -50%)';
           ghostImage.innerHTML = item.image;
           ghostImage.style.fontSize = '2.5em';
         }
+        
+        const scanners = document.querySelectorAll('.scanner-drop-area');
+        let isOverScanner = false;
+        
+        scanners.forEach(scanner => {
+          const rect = scanner.getBoundingClientRect();
+          if (
+            e.clientX >= rect.left && 
+            e.clientX <= rect.right && 
+            e.clientY >= rect.top && 
+            e.clientY <= rect.bottom
+          ) {
+            isOverScanner = true;
+            scanner.classList.add('scan-area-highlight');
+          } else {
+            scanner.classList.remove('scan-area-highlight');
+          }
+        });
+      } else if (conveyorRef.current) {
+        const rect = conveyorRef.current.getBoundingClientRect();
+        
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        const withinConveyor = 
+          e.clientX >= rect.left && 
+          e.clientX <= rect.right && 
+          e.clientY >= rect.top && 
+          e.clientY <= rect.bottom;
+        
+        if (!withinConveyor && !draggingInfo.freeDragging) {
+          setDraggingInfo({
+            ...draggingInfo,
+            freeDragging: true
+          });
+          
+          if (ghostImage) {
+            ghostImage.style.display = 'block';
+            ghostImage.style.left = `${e.clientX}px`;
+            ghostImage.style.top = `${e.clientY}px`;
+            
+            const item = movingItems.find(item => item.id === draggingInfo.itemId);
+            if (item) {
+              ghostImage.innerHTML = item.image;
+              ghostImage.style.fontSize = '2.5em';
+            }
+          }
+        } else if (withinConveyor && !draggingInfo.freeDragging) {
+          const constrainedX = Math.max(0, Math.min(100, x));
+          const constrainedY = Math.max(10, Math.min(90, y));
+          
+          setMovingItems(prevItems => {
+            return prevItems.map(item => {
+              if (item.id === draggingInfo.itemId) {
+                return {
+                  ...item,
+                  position: constrainedX,
+                  yPosition: constrainedY
+                };
+              }
+              return item;
+            });
+          });
+        }
       }
     };
     
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!draggingInfo) return;
+      
+      if (draggingInfo.freeDragging) {
+        const scanners = document.querySelectorAll('.scanner-drop-area');
+        let isOverScanner = false;
+        let scanner: Element | null = null;
+        
+        scanners.forEach(s => {
+          const rect = s.getBoundingClientRect();
+          if (
+            e.clientX >= rect.left && 
+            e.clientX <= rect.right && 
+            e.clientY >= rect.top && 
+            e.clientY <= rect.bottom
+          ) {
+            isOverScanner = true;
+            scanner = s;
+            s.classList.remove('scan-area-highlight');
+          }
+        });
+        
+        if (isOverScanner && scanner) {
+          const item = movingItems.find(item => item.id === draggingInfo.itemId);
+          if (item) {
+            onScanItem(item);
+            
+            setMovingItems(prev => prev.filter(i => i.id !== item.id));
+          }
+        } else {
+          if (conveyorRef.current) {
+            const rect = conveyorRef.current.getBoundingClientRect();
+            let newPosition = 50;
+            
+            if (
+              e.clientX >= rect.left && 
+              e.clientX <= rect.right
+            ) {
+              newPosition = ((e.clientX - rect.left) / rect.width) * 100;
+            }
+            
+            let newYPosition = 50;
+            
+            if (
+              e.clientY >= rect.top && 
+              e.clientY <= rect.bottom
+            ) {
+              newYPosition = ((e.clientY - rect.top) / rect.height) * 100;
+            }
+            
+            const constrainedX = Math.max(20, Math.min(80, newPosition));
+            const constrainedY = Math.max(20, Math.min(80, newYPosition));
+            
+            setMovingItems(prev => {
+              return prev.map(item => {
+                if (item.id === draggingInfo.itemId) {
+                  return {
+                    ...item,
+                    position: constrainedX,
+                    yPosition: constrainedY
+                  };
+                }
+                return item;
+              });
+            });
+          }
+        }
+      }
+      
+      if (draggingInfo.element) {
+        draggingInfo.element.classList.remove('item-being-dragged');
+      }
+      
       if (ghostImage) {
         ghostImage.style.display = 'none';
       }
+      
+      setDraggingInfo(null);
+      setIsDragging(null);
     };
     
-    window.addEventListener('mousemove', updateGhostPosition);
-    window.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     
     return () => {
-      window.removeEventListener('mousemove', updateGhostPosition);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, ghostImage, movingItems]);
-  
-  // Improved drag handling for items on the conveyor
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    setIsDragging(itemId);
-    
-    // Set up the drag image (blank transparent image)
-    const dragImg = new Image();
-    dragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(dragImg, 0, 0);
-    
-    // Add the item data to the drag event
-    e.dataTransfer.setData('itemId', itemId);
-    
-    // Find the dragged item
-    const draggedItem = movingItems.find(item => item.id === itemId);
-    if (draggedItem && ghostImage) {
-      ghostImage.innerHTML = draggedItem.image;
-      ghostImage.style.display = 'block';
-    }
-  };
-  
-  const handleDragEnd = (e: React.DragEvent) => {
-    const draggedItem = movingItems.find(item => item.id === isDragging);
-    
-    // When drag ends, keep the item in its final position but resume conveyor movement
-    if (draggedItem && draggedPosition) {
-      setMovingItems(prevItems => prevItems.map(item => {
-        if (item.id === isDragging) {
-          return {
-            ...item,
-            position: draggedPosition.x,
-            yPosition: draggedPosition.y
-          };
-        }
-        return item;
-      }));
-    }
-    
-    if (ghostImage) {
-      ghostImage.style.display = 'none';
-    }
-    
-    setIsDragging(null);
-    setDraggedPosition(null);
-  };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!isDragging) return;
-    
-    // Get the coordinates relative to the conveyor belt
-    const rect = conveyorRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
-    // Constrain positions within the conveyor
-    const constrainedX = Math.max(0, Math.min(100, x));
-    const constrainedY = Math.max(10, Math.min(90, y));
-    
-    setDraggedPosition({ x: constrainedX, y: constrainedY });
-    
-    // Update the position of the dragged item
-    setMovingItems(prevItems => {
-      return prevItems.map(item => {
-        if (item.id === isDragging) {
-          return {
-            ...item,
-            position: constrainedX,
-            yPosition: constrainedY
-          };
-        }
-        return item;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      document.querySelectorAll('.scan-area-highlight').forEach(el => {
+        el.classList.remove('scan-area-highlight');
       });
+    };
+  }, [draggingInfo, ghostImage, movingItems, onScanItem]);
+  
+  const handleLongPress = (item: ItemType, e: React.MouseEvent) => {
+    const element = e.currentTarget as HTMLElement;
+    element.classList.add('item-being-dragged');
+    
+    const movingItem = movingItems.find(mi => mi.id === item.id);
+    if (!movingItem) return;
+    
+    setIsDragging(item.id);
+    setDraggingInfo({
+      itemId: item.id,
+      initialX: movingItem.position,
+      initialY: movingItem.yPosition,
+      freeDragging: false,
+      element
     });
   };
   
-  // Track mouse position for drag operations outside the conveyor
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging && conveyorRef.current) {
-      const rect = conveyorRef.current.getBoundingClientRect();
-      
-      // Check if mouse is outside the conveyor
-      if (
-        e.clientX < rect.left || 
-        e.clientX > rect.right || 
-        e.clientY < rect.top || 
-        e.clientY > rect.bottom
-      ) {
-        // Still update the ghost image position
-        if (ghostImage) {
-          ghostImage.style.display = 'block';
-          ghostImage.style.left = `${e.clientX}px`;
-          ghostImage.style.top = `${e.clientY}px`;
-        }
-      }
-    }
-  };
-  
-  // Handle item scanning with improved position tracking
   const handleItemClick = (item: ItemType) => {
-    // Store the position of the clicked item to avoid placing new items there
+    if (isDragging || draggingInfo) return;
+    
     const clickedItem = movingItems.find(mi => mi.id === item.id);
     if (clickedItem) {
-      // Create a larger forbidden zone around the clicked item
       const position = clickedItem.position;
       const yPosition = clickedItem.yPosition;
       
-      // Add multiple points in a larger grid pattern around the scanned item
       const forbiddenPositions = [];
       for (let xOffset = -50; xOffset <= 50; xOffset += 10) {
         for (let yOffset = -50; yOffset <= 50; yOffset += 10) {
@@ -342,21 +387,16 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       setUsedPositions(prev => [...prev, ...forbiddenPositions].slice(0, 100));
     }
     
-    // Remove the item from movingItems
     setMovingItems(prevItems => prevItems.filter(i => i.id !== item.id));
     
     onScanItem(item);
   };
   
-  // Render with unique, stable keys
   return (
     <div 
       ref={conveyorRef}
       className="relative h-32 mt-6 mb-8 bg-gray-300 rounded-lg overflow-hidden shadow-inner"
-      onDragOver={handleDragOver}
-      onMouseMove={handleMouseMove}
     >
-      {/* Conveyor belt stripes */}
       <div className="absolute inset-0 flex">
         {Array.from({ length: 20 }).map((_, index) => (
           <div 
@@ -367,30 +407,26 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         ))}
       </div>
       
-      {/* Items on the belt with guaranteed unique keys */}
       <div className="relative h-full w-full">
         {movingItems.map((item) => (
           <div 
             key={`${item.id}-${item.position.toFixed(1)}-${item.yPosition.toFixed(1)}`} 
-            className="absolute transition-all duration-200"
+            className={`absolute transition-all duration-200 ${isDragging === item.id ? 'z-50' : 'z-10'}`}
             style={{ 
               left: `${item.position}%`,
               top: `${item.yPosition}%`,
-              transform: 'translate(-50%, -50%)',
-              zIndex: isDragging === item.id ? 100 : 10,
-              cursor: 'grab'
+              transform: 'translate(-50%, -50%)`,
+              cursor: 'pointer'
             }}
-            draggable={true}
-            onDragStart={(e) => handleDragStart(e, item.id)}
-            onDragEnd={handleDragEnd}
           >
             <Item 
               item={item} 
               onScan={handleItemClick}
               onMove={onMoveItem}
-              isDraggable={false} // We handle dragging at this level
-              isAnimating={false} // We're handling animation ourselves
-              showPrice={false} // Hide prices as requested
+              onLongPress={handleLongPress}
+              isDraggable={false}
+              isAnimating={false}
+              showPrice={false}
             />
           </div>
         ))}

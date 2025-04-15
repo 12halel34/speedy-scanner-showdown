@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Item as ItemType } from '@/types/game';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ interface ItemProps {
   isThrowable?: boolean;
   isDraggable?: boolean;
   showPrice?: boolean;
+  onLongPress?: (item: ItemType, e: React.MouseEvent) => void;
 }
 
 const Item: React.FC<ItemProps> = ({ 
@@ -22,8 +23,12 @@ const Item: React.FC<ItemProps> = ({
   isAnimating = true,
   isThrowable = false,
   isDraggable = false,
-  showPrice = true
+  showPrice = true,
+  onLongPress
 }) => {
+  const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isPressing, setIsPressing] = useState(false);
+
   const handleClick = () => {
     if (isThrowable && onThrow) {
       onThrow(item);
@@ -54,17 +59,64 @@ const Item: React.FC<ItemProps> = ({
     }
   };
 
+  // Handle mousedown for long press detection
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!onLongPress) return;
+    
+    setIsPressing(true);
+    
+    // Set a timer for long press (500ms)
+    const timer = setTimeout(() => {
+      // Call the long press handler and pass the event
+      onLongPress(item, e);
+      
+      // Add pulse animation to indicate item is being grabbed
+      const element = e.currentTarget as HTMLElement;
+      element.classList.add('pulse-grab');
+      
+      // Remove the animation class after it completes
+      setTimeout(() => {
+        element.classList.remove('pulse-grab');
+      }, 800);
+      
+    }, 500);
+    
+    setPressTimer(timer);
+  };
+  
+  // Clear the timer if mouse is released before long press threshold
+  const handleMouseUp = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      setPressTimer(null);
+    }
+    setIsPressing(false);
+  };
+  
+  // Clear the timer if mouse leaves the element
+  const handleMouseLeave = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      setPressTimer(null);
+    }
+    setIsPressing(false);
+  };
+
   return (
     <div 
       className={cn(
         "relative cursor-pointer transform transition-all duration-200 hover:scale-110 active:scale-95",
         isAnimating && "conveyor-animation",
         isThrowable && "throwable-item",
-        isDraggable && "cursor-grab active:cursor-grabbing"
+        isDraggable && "cursor-grab active:cursor-grabbing",
+        isPressing && "scale-105"
       )}
       onClick={handleClick}
       draggable={isDraggable}
       onDragStart={handleDragStart}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       aria-label={`${item.name}`}
       title={isDraggable ? "Drag to scanner" : item.name}
     >
