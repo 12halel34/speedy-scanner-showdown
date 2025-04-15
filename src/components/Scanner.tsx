@@ -17,6 +17,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   const [lastItemDropTime, setLastItemDropTime] = useState(0);
   const processedItemsRef = useRef<Set<string>>(new Set());
   const processingRef = useRef<boolean>(false);
+  const activeDropTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Track when an item is being dragged over the entire document
   useEffect(() => {
@@ -49,6 +50,25 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     }, 10000);
     
     return () => clearInterval(cleanupInterval);
+  }, []);
+
+  // Subscribe to item removed events from the conveyor
+  useEffect(() => {
+    const handleItemRemoved = (event: CustomEvent) => {
+      if (event.detail && event.detail.itemId) {
+        processedItemsRef.current.add(event.detail.itemId);
+        // Clear from processed cache after 5 seconds
+        setTimeout(() => {
+          processedItemsRef.current.delete(event.detail.itemId);
+        }, 5000);
+      }
+    };
+
+    document.addEventListener('itemRemoved' as any, handleItemRemoved as EventListener);
+    
+    return () => {
+      document.removeEventListener('itemRemoved' as any, handleItemRemoved as EventListener);
+    };
   }, []);
   
   const handleScan = () => {
@@ -91,7 +111,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     
     // Prevent multiple drops in quick succession (debounce)
     const now = Date.now();
-    if (now - lastItemDropTime < 800) {
+    if (now - lastItemDropTime < 1000) {
       console.log("Ignoring drop due to debounce", now - lastItemDropTime);
       return; // Ignore drops that happen too quickly after another
     }
@@ -119,13 +139,34 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
         
         if (item.id) {
           processedItemsRef.current.add(item.id);
+          // Dispatch an event to notify the conveyor belt this item is being processed
+          const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
+            detail: { itemId: item.id }
+          });
+          document.dispatchEvent(draggedItemEvent);
+          
           // Remove from processed set after a while
           setTimeout(() => {
             processedItemsRef.current.delete(item.id);
           }, 5000);
         }
         
-        onItemDrop(item);
+        // Clear any active drop timeout
+        if (activeDropTimeoutRef.current) {
+          clearTimeout(activeDropTimeoutRef.current);
+          activeDropTimeoutRef.current = null;
+        }
+        
+        // Process the item with a slight delay to allow rendering to catch up
+        activeDropTimeoutRef.current = setTimeout(() => {
+          onItemDrop(item);
+          activeDropTimeoutRef.current = null;
+          
+          // Reset processing flag after a delay
+          setTimeout(() => {
+            processingRef.current = false;
+          }, 500);
+        }, 50);
       } 
       // If we have an itemId from the conveyor belt, pass that to the parent
       else if (itemId) {
@@ -138,22 +179,43 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
         }
         
         processedItemsRef.current.add(itemId);
+        // Dispatch an event to notify the conveyor belt this item is being processed
+        const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
+          detail: { itemId: itemId }
+        });
+        document.dispatchEvent(draggedItemEvent);
+        
         // Remove from processed set after a while
         setTimeout(() => {
           processedItemsRef.current.delete(itemId);
         }, 5000);
         
-        // The onItemDrop handler will need to find the item by ID
-        // We'll pass a minimal item with just the ID, and let the parent component handle it
-        onItemDrop({ id: itemId } as ItemType);
+        // Clear any active drop timeout
+        if (activeDropTimeoutRef.current) {
+          clearTimeout(activeDropTimeoutRef.current);
+          activeDropTimeoutRef.current = null;
+        }
+        
+        // Process the item with a slight delay
+        activeDropTimeoutRef.current = setTimeout(() => {
+          // The onItemDrop handler will need to find the item by ID
+          // We'll pass a minimal item with just the ID, and let the parent component handle it
+          onItemDrop({ id: itemId } as ItemType);
+          activeDropTimeoutRef.current = null;
+          
+          // Reset processing flag after a delay
+          setTimeout(() => {
+            processingRef.current = false;
+          }, 500);
+        }, 50);
+      } else {
+        processingRef.current = false;
       }
       
       // Trigger scan animation
       setIsScanning(true);
       setTimeout(() => {
         setIsScanning(false);
-        // Reset processing flag after animation completes
-        processingRef.current = false;
       }, 500);
     } catch (error) {
       console.error('Error processing dragged item:', error);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Item as ItemType } from '@/types/game';
 import Item from './Item';
@@ -33,6 +32,25 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     initialY: number;
     freeDragging: boolean;
   } | null>(null);
+  const itemBeingProcessedRef = useRef<Set<string>>(new Set());
+  
+  useEffect(() => {
+    const handleItemProcessing = (event: CustomEvent) => {
+      if (event.detail && event.detail.itemId) {
+        itemBeingProcessedRef.current.add(event.detail.itemId);
+        setMovingItems(prev => prev.filter(item => item.id !== event.detail.itemId));
+        setTimeout(() => {
+          itemBeingProcessedRef.current.delete(event.detail.itemId);
+        }, 5000);
+      }
+    };
+    
+    document.addEventListener('itemBeingProcessed' as any, handleItemProcessing as EventListener);
+    
+    return () => {
+      document.removeEventListener('itemBeingProcessed' as any, handleItemProcessing as EventListener);
+    };
+  }, []);
   
   useEffect(() => {
     const updateDimensions = () => {
@@ -55,99 +73,129 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   
   useEffect(() => {
     if (items.length > 0 && conveyorWidth > 0 && conveyorHeight > 0) {
-      const currentPositions = movingItems.map(item => ({
-        x: item.position,
-        y: item.yPosition
-      }));
-      
-      setUsedPositions(prev => {
-        const updatedPositions = [...prev];
-        return [...currentPositions, ...updatedPositions].slice(0, 50);
-      });
-      
-      const newItemsWithPosition = items.map(item => {
-        const existingItem = movingItems.find(mi => mi.id === item.id);
+      try {
+        const filteredItems = items.filter(
+          item => !item.id || !itemBeingProcessedRef.current.has(item.id)
+        );
         
-        if (existingItem) {
-          return {
-            ...item,
-            position: existingItem.position,
-            yPosition: existingItem.yPosition
-          };
-        } else {
-          let x, y;
-          let attempts = 0;
-          let maxAttempts = 40;
-          
-          do {
-            x = 110 + Math.random() * 30;
-            y = 20 + Math.random() * 60;
-            attempts++;
-            
-            if (attempts > maxAttempts) {
-              x = 140 + Math.random() * 40;
-              break;
-            }
-          } while (isPositionOccupied(x, y));
-          
-          const bufferPoints = [];
-          for (let bx = -40; bx <= 40; bx += 20) {
-            for (let by = -40; by <= 40; by += 20) {
-              bufferPoints.push({ x: x + bx, y: y + by });
-            }
+        const currentPositions = movingItems.map(item => ({
+          x: item.position,
+          y: item.yPosition
+        }));
+        
+        setUsedPositions(prev => {
+          const updatedPositions = [...prev];
+          return [...currentPositions, ...updatedPositions].slice(0, 50);
+        });
+        
+        const newItemsWithPosition = filteredItems.map(item => {
+          if (isDragging === item.id || 
+              (item.id && itemBeingProcessedRef.current.has(item.id))) {
+            return null;
           }
           
-          setUsedPositions(prev => [
-            ...prev,
-            ...bufferPoints
-          ].slice(0, 100));
+          const existingItem = movingItems.find(mi => mi.id === item.id);
           
-          return {
+          if (existingItem) {
+            return {
+              ...item,
+              position: existingItem.position,
+              yPosition: existingItem.yPosition
+            };
+          } else {
+            let x, y;
+            let attempts = 0;
+            let maxAttempts = 40;
+            
+            do {
+              x = 110 + Math.random() * 30;
+              y = 20 + Math.random() * 60;
+              attempts++;
+              
+              if (attempts > maxAttempts) {
+                x = 140 + Math.random() * 40;
+                break;
+              }
+            } while (isPositionOccupied(x, y));
+            
+            const bufferPoints = [];
+            for (let bx = -40; bx <= 40; bx += 20) {
+              for (let by = -40; by <= 40; by += 20) {
+                bufferPoints.push({ x: x + bx, y: y + by });
+              }
+            }
+            
+            setUsedPositions(prev => [
+              ...prev,
+              ...bufferPoints
+            ].slice(0, 100));
+            
+            return {
+              ...item,
+              position: x,
+              yPosition: y
+            };
+          }
+        }).filter(Boolean) as (ItemType & { position: number, yPosition: number })[];
+        
+        const uniqueItems = new Map<string, ItemType & { position: number, yPosition: number }>();
+        
+        newItemsWithPosition.forEach(item => {
+          if (item && item.id && !uniqueItems.has(item.id)) {
+            uniqueItems.set(item.id, item);
+          }
+        });
+        
+        setMovingItems(prevItems => {
+          const filteredPrevItems = prevItems.filter(item => 
+            !itemBeingProcessedRef.current.has(item.id) && 
+            Array.from(uniqueItems.keys()).includes(item.id)
+          );
+          
+          const itemsToAdd = Array.from(uniqueItems.values()).filter(
+            item => !filteredPrevItems.some(fi => fi.id === item.id)
+          );
+          
+          return [...filteredPrevItems, ...itemsToAdd].map(item => ({
             ...item,
-            position: x,
-            yPosition: y
-          };
-        }
-      });
-      
-      setMovingItems(prevItems => {
-        const filteredItems = prevItems.filter(item => 
-          newItemsWithPosition.some(ni => ni.id === item.id)
-        );
-        
-        const itemsToAdd = newItemsWithPosition.filter(item => 
-          !filteredItems.some(fi => fi.id === item.id)
-        );
-        
-        return [...filteredItems, ...itemsToAdd];
-      });
+            key: `${item.id}-${Date.now()}`
+          }));
+        });
+      } catch (error) {
+        console.error("Error updating moving items:", error);
+      }
     }
-  }, [items, conveyorWidth, conveyorHeight]);
+  }, [items, conveyorWidth, conveyorHeight, isDragging]);
   
   useEffect(() => {
     if (movingItems.length === 0) return;
     
     const moveInterval = setInterval(() => {
       setMovingItems(prevItems => {
-        const updatedItems = prevItems.map(item => {
-          if (draggingInfo && draggingInfo.itemId === item.id && draggingInfo.freeDragging) {
-            return item;
-          }
-          return {
-            ...item,
-            position: item.position - (0.4 * speedMultiplier)
-          };
-        });
-        
-        const itemsToRemove = updatedItems.filter(item => item.position <= -15);
-        
-        itemsToRemove.forEach(item => {
-          if (onItemReachEnd) {
-            onItemReachEnd(item);
-          }
-        });
-        
-        return updatedItems.filter(item => item.position > -15);
+        try {
+          const updatedItems = prevItems.map(item => {
+            if (draggingInfo && draggingInfo.itemId === item.id && draggingInfo.freeDragging) {
+              return item;
+            }
+            return {
+              ...item,
+              position: item.position - (0.4 * speedMultiplier)
+            };
+          });
+          
+          const itemsToRemove = updatedItems.filter(item => item.position <= -15);
+          
+          itemsToRemove.forEach(item => {
+            if (onItemReachEnd && !itemBeingProcessedRef.current.has(item.id)) {
+              onItemReachEnd(item);
+            }
+          });
+          
+          return updatedItems.filter(item => item.position > -15);
+        } catch (error) {
+          console.error("Error updating moving items in interval:", error);
+          return prevItems;
+        }
       });
     }, 50);
     
@@ -285,18 +333,21 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           if (isOverScanner && scanner) {
             const item = movingItems.find(item => item.id === draggingInfo.itemId);
             if (item) {
-              // First remove the item from conveyor to prevent duplication
+              itemBeingProcessedRef.current.add(item.id);
+              
               setMovingItems(prev => prev.filter(i => i.id !== item.id));
               
-              // Set a data transfer attribute to indicate this item was removed
               const draggedItemEvent = new CustomEvent('itemRemoved', {
                 detail: { itemId: item.id }
               });
               document.dispatchEvent(draggedItemEvent);
               
-              // Wait a small delay before scanning to prevent duplicate events
               setTimeout(() => {
                 onScanItem(item);
+                
+                setTimeout(() => {
+                  itemBeingProcessedRef.current.delete(item.id);
+                }, 3000);
               }, 50);
             }
           } else {
@@ -352,7 +403,6 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       } catch (error) {
         console.error("Error during mouse up:", error);
         
-        // Force reset dragging state on error
         document.querySelectorAll('.item-being-dragged').forEach(el => {
           el.classList.remove('item-being-dragged');
         });
@@ -381,6 +431,11 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   
   const handleLongPress = (item: ItemType, e: React.MouseEvent) => {
     try {
+      if (item.id && itemBeingProcessedRef.current.has(item.id)) {
+        console.log("Item is already being processed, cannot grab", item.id);
+        return;
+      }
+      
       const element = e.currentTarget as HTMLElement;
       if (element && element.classList) {
         element.classList.add('item-being-dragged');
@@ -404,6 +459,15 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const handleItemClick = (item: ItemType) => {
     if (isDragging || draggingInfo) return;
     
+    if (item.id && itemBeingProcessedRef.current.has(item.id)) {
+      console.log("Item is already being processed, cannot click", item.id);
+      return;
+    }
+    
+    if (item.id) {
+      itemBeingProcessedRef.current.add(item.id);
+    }
+    
     const clickedItem = movingItems.find(mi => mi.id === item.id);
     if (clickedItem) {
       const position = clickedItem.position;
@@ -424,7 +488,22 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     
     setMovingItems(prevItems => prevItems.filter(i => i.id !== item.id));
     
+    const removedEvent = new CustomEvent('itemRemoved', {
+      detail: { itemId: item.id }
+    });
+    document.dispatchEvent(removedEvent);
+    
+    if (item.id) {
+      setTimeout(() => {
+        itemBeingProcessedRef.current.delete(item.id);
+      }, 3000);
+    }
+    
     onScanItem(item);
+  };
+  
+  const getUniqueItemKey = (item: ItemType & { position: number, yPosition: number }) => {
+    return `${item.id}-${item.position.toFixed(2)}-${item.yPosition.toFixed(2)}-${Date.now()}`;
   };
   
   return (
@@ -435,7 +514,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       <div className="absolute inset-0 flex">
         {Array.from({ length: 20 }).map((_, index) => (
           <div 
-            key={index} 
+            key={`belt-segment-${index}`}
             className="h-full w-8 bg-gray-400" 
             style={{ marginRight: '12px' }}
           />
@@ -445,7 +524,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       <div className="relative h-full w-full">
         {movingItems.map((item) => (
           <div 
-            key={`${item.id}-${item.position.toFixed(1)}-${item.yPosition.toFixed(1)}`} 
+            key={getUniqueItemKey(item)}
             className={`absolute transition-all duration-200 ${isDragging === item.id ? 'z-50' : 'z-10'}`}
             style={{ 
               left: `${item.position}%`,

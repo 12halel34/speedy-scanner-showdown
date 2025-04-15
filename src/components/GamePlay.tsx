@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -28,10 +29,35 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [scoreAnimation, setScoreAnimation] = useState<{ amount: number, isVisible: boolean }>({ amount: 0, isVisible: false });
   const speedIncreaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const itemProcessingRef = useRef<Set<string>>(new Set());
   const minConveyorItems = 12;
   const maxConveyorItems = 16;
   const lastScannedPositionsRef = useRef<{id: string, timestamp: number}[]>([]);
   const processedItemsRef = useRef<Set<string>>(new Set());
+  
+  // Listen for item processing events
+  useEffect(() => {
+    const handleItemProcessing = (event: CustomEvent) => {
+      if (event.detail && event.detail.itemId) {
+        // Remove item from conveyor immediately to prevent duplication
+        setConveyorItems(prev => prev.filter(i => i.id !== event.detail.itemId));
+        
+        // Add to processing set to prevent reprocessing
+        itemProcessingRef.current.add(event.detail.itemId);
+        
+        // Clear from processing set after a while
+        setTimeout(() => {
+          itemProcessingRef.current.delete(event.detail.itemId);
+        }, 5000);
+      }
+    };
+    
+    document.addEventListener('itemBeingProcessed' as any, handleItemProcessing as EventListener);
+    
+    return () => {
+      document.removeEventListener('itemBeingProcessed' as any, handleItemProcessing as EventListener);
+    };
+  }, []);
   
   useEffect(() => {
     const initialItems = getRandomItems(minConveyorItems).map(item => ({
@@ -100,17 +126,26 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     if (conveyorItems.length < minConveyorItems) {
       const itemsToAdd = minConveyorItems - conveyorItems.length;
       
+      // Use a staggered approach to add items to prevent batch creation
       const addItems = () => {
-        const newItem = getRandomItems(1)[0];
-        const newItemWithId = {
-          ...newItem,
-          location: undefined
-        };
-        
-        setConveyorItems(prev => [...prev, newItemWithId]);
-        
-        if (itemsToAdd > 1) {
-          setTimeout(addItems, 300);
+        try {
+          const newItem = getRandomItems(1)[0];
+          const newItemWithId = {
+            ...newItem,
+            id: `${newItem.id || newItem.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            location: undefined
+          };
+          
+          // Only add if this ID isn't already being processed
+          if (!itemProcessingRef.current.has(newItemWithId.id)) {
+            setConveyorItems(prev => [...prev, newItemWithId]);
+          }
+          
+          if (itemsToAdd > 1) {
+            setTimeout(addItems, 300);
+          }
+        } catch (error) {
+          console.error("Error adding new item:", error);
         }
       };
       
@@ -220,19 +255,21 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       });
     }
     
-    // First remove the item from conveyor to prevent duplication
-    setConveyorItems(prev => prev.filter(i => i.id !== fullItem.id));
-    
     // Then add a new item with a delay to prevent rapid appearance
     const newItemsCount = 1;
     
     setTimeout(() => {
-      const newItems = getRandomItems(newItemsCount).map(item => ({
-        ...item,
-        location: undefined
-      }));
-      
-      setConveyorItems(prev => [...prev, ...newItems]);
+      try {
+        const newItems = getRandomItems(newItemsCount).map(item => ({
+          ...item,
+          id: `${item.id || item.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          location: undefined
+        }));
+        
+        setConveyorItems(prev => [...prev, ...newItems]);
+      } catch (error) {
+        console.error("Error adding replacement items:", error);
+      }
     }, 1000);
     
     setSelectedItem(null);
@@ -255,23 +292,37 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       }, 3000);
     }
     
-    // Immediately remove from conveyor to prevent duplicate process
-    if (item.id) {
-      setConveyorItems(prev => prev.filter(i => i.id !== item.id));
-    }
-    
     // Process the item after a short delay
     setTimeout(() => {
-      processSelectedItem(item);
+      try {
+        processSelectedItem(item);
+      } catch (error) {
+        console.error("Error processing dropped item:", error);
+      }
     }, 100);
   }, []);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
+    // Make sure we're not trying to remove an item that's already being processed
+    if (item.id && itemProcessingRef.current.has(item.id)) {
+      return;
+    }
+    
     setConveyorItems(prev => prev.filter(i => i.id !== item.id));
     
     setTimeout(() => {
-      const newItem = getRandomItems(1)[0];
-      setConveyorItems(prev => [...prev, { ...newItem, location: undefined }]);
+      try {
+        const newItem = getRandomItems(1)[0];
+        const newItemWithId = {
+          ...newItem,
+          id: `${newItem.id || newItem.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          location: undefined
+        };
+        
+        setConveyorItems(prev => [...prev, newItemWithId]);
+      } catch (error) {
+        console.error("Error adding replacement item:", error);
+      }
     }, 800);
     
     toast.info("Item moved back to storage!");
