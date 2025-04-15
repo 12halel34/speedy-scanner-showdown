@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -151,13 +150,18 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
 
   const processSelectedItem = (item: ItemType) => {
     // Prevent duplicate processing
-    if (item.id && processedItemsRef.current.has(item.id)) {
+    if (item.id && processedItemsRef.current.has(item.id + "_processed")) {
       console.log("Prevented duplicate processing of item:", item.id);
       return;
     }
     
     if (item.id) {
-      processedItemsRef.current.add(item.id);
+      processedItemsRef.current.add(item.id + "_processed");
+      
+      // Clear from processed set after some time
+      setTimeout(() => {
+        processedItemsRef.current.delete(item.id + "_processed");
+      }, 5000);
     }
     
     const fullItem = item.id && !item.name ? 
@@ -216,8 +220,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       });
     }
     
+    // First remove the item from conveyor to prevent duplication
     setConveyorItems(prev => prev.filter(i => i.id !== fullItem.id));
     
+    // Then add a new item with a delay to prevent rapid appearance
     const newItemsCount = 1;
     
     setTimeout(() => {
@@ -230,17 +236,34 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     }, 1000);
     
     setSelectedItem(null);
-    
-    // Allow reprocessing after a delay
-    if (item.id) {
-      setTimeout(() => {
-        processedItemsRef.current.delete(item.id);
-      }, 2000);
-    }
   };
 
   const handleItemDropOnScanner = useCallback((item: ItemType) => {
-    processSelectedItem(item);
+    // Check if already in processed items
+    if (item.id && processedItemsRef.current.has(item.id + "_dropped")) {
+      console.log("Prevented duplicate drop handling:", item.id);
+      return;
+    }
+    
+    // Add to processed set with drop-specific marker
+    if (item.id) {
+      processedItemsRef.current.add(item.id + "_dropped");
+      
+      // Clear from processed set after some time
+      setTimeout(() => {
+        processedItemsRef.current.delete(item.id + "_dropped");
+      }, 3000);
+    }
+    
+    // Immediately remove from conveyor to prevent duplicate process
+    if (item.id) {
+      setConveyorItems(prev => prev.filter(i => i.id !== item.id));
+    }
+    
+    // Process the item after a short delay
+    setTimeout(() => {
+      processSelectedItem(item);
+    }, 100);
   }, []);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {

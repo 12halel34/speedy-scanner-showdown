@@ -26,6 +26,17 @@ export const isMarketItem = (item: Item): boolean => {
   return item.category !== 'invalid';
 };
 
+// Helper to generate unique item ID
+export const ensureUniqueItemId = (item: Item, existingItems: Item[]): Item => {
+  if (!item.id || existingItems.some(i => i.id === item.id)) {
+    return {
+      ...item,
+      id: `${item.name}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    };
+  }
+  return item;
+};
+
 // Initialize the game state
 export const initGame = (): GameState => {
   const savedHighScore = localStorage.getItem('cashier2000HighScore');

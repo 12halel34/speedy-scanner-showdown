@@ -285,12 +285,19 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           if (isOverScanner && scanner) {
             const item = movingItems.find(item => item.id === draggingInfo.itemId);
             if (item) {
-              // Remove the item before scanning to prevent duplicates
+              // First remove the item from conveyor to prevent duplication
               setMovingItems(prev => prev.filter(i => i.id !== item.id));
+              
+              // Set a data transfer attribute to indicate this item was removed
+              const draggedItemEvent = new CustomEvent('itemRemoved', {
+                detail: { itemId: item.id }
+              });
+              document.dispatchEvent(draggedItemEvent);
+              
               // Wait a small delay before scanning to prevent duplicate events
               setTimeout(() => {
                 onScanItem(item);
-              }, 10);
+              }, 50);
             }
           } else {
             if (conveyorRef.current) {

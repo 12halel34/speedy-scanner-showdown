@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Scan } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
 import { toast } from 'sonner';
@@ -15,6 +15,8 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [ghostVisible, setGhostVisible] = useState(false);
   const [lastItemDropTime, setLastItemDropTime] = useState(0);
+  const processedItemsRef = useRef<Set<string>>(new Set());
+  const processingRef = useRef<boolean>(false);
   
   // Track when an item is being dragged over the entire document
   useEffect(() => {
@@ -36,6 +38,17 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
       document.removeEventListener('dragenter', handleDragEnterDocument);
       document.removeEventListener('dragleave', handleDragLeaveDocument);
     };
+  }, []);
+  
+  // Cleanup processed items cache periodically
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      if (processedItemsRef.current.size > 50) {
+        processedItemsRef.current.clear();
+      }
+    }, 10000);
+    
+    return () => clearInterval(cleanupInterval);
   }, []);
   
   const handleScan = () => {
@@ -71,25 +84,65 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setIsDropTarget(false);
     e.currentTarget.classList.remove('dragging-over-scanner');
     
+    if (processingRef.current) {
+      console.log("Already processing an item, ignoring drop");
+      return;
+    }
+    
     // Prevent multiple drops in quick succession (debounce)
     const now = Date.now();
-    if (now - lastItemDropTime < 500) {
+    if (now - lastItemDropTime < 800) {
+      console.log("Ignoring drop due to debounce", now - lastItemDropTime);
       return; // Ignore drops that happen too quickly after another
     }
     setLastItemDropTime(now);
     
     try {
+      // Mark that we're processing an item
+      processingRef.current = true;
+      
       // Check for both item data formats (direct object or ID)
       const itemData = e.dataTransfer.getData('text/plain');
       const itemId = e.dataTransfer.getData('itemId');
       
-      // If we have JSON item data, use that
+      // For either case, check if we've recently processed this item
       if (itemData) {
         const item = JSON.parse(itemData) as ItemType;
+        
+        if (item.id && processedItemsRef.current.has(item.id)) {
+          console.log("Already processed item:", item.id);
+          setTimeout(() => {
+            processingRef.current = false;
+          }, 500);
+          return;
+        }
+        
+        if (item.id) {
+          processedItemsRef.current.add(item.id);
+          // Remove from processed set after a while
+          setTimeout(() => {
+            processedItemsRef.current.delete(item.id);
+          }, 5000);
+        }
+        
         onItemDrop(item);
       } 
       // If we have an itemId from the conveyor belt, pass that to the parent
       else if (itemId) {
+        if (processedItemsRef.current.has(itemId)) {
+          console.log("Already processed item with ID:", itemId);
+          setTimeout(() => {
+            processingRef.current = false;
+          }, 500);
+          return;
+        }
+        
+        processedItemsRef.current.add(itemId);
+        // Remove from processed set after a while
+        setTimeout(() => {
+          processedItemsRef.current.delete(itemId);
+        }, 5000);
+        
         // The onItemDrop handler will need to find the item by ID
         // We'll pass a minimal item with just the ID, and let the parent component handle it
         onItemDrop({ id: itemId } as ItemType);
@@ -99,10 +152,14 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
       setIsScanning(true);
       setTimeout(() => {
         setIsScanning(false);
-      }, 300);
+        // Reset processing flag after animation completes
+        processingRef.current = false;
+      }, 500);
     } catch (error) {
       console.error('Error processing dragged item:', error);
       toast.error('Failed to process item');
+      // Make sure to reset processing flag on error
+      processingRef.current = false;
     }
   };
   
