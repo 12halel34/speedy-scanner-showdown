@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -31,6 +32,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const minConveyorItems = 12;
   const maxConveyorItems = 16;
   const lastScannedPositionsRef = useRef<{id: string, timestamp: number}[]>([]);
+  const processedItemsRef = useRef<Set<string>>(new Set());
   
   useEffect(() => {
     const initialItems = getRandomItems(minConveyorItems).map(item => ({
@@ -82,7 +84,17 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       );
     }, 5000);
     
-    return () => clearInterval(cleanupInterval);
+    // Also clean up the processed items cache occasionally
+    const cleanupProcessedItems = setInterval(() => {
+      if (processedItemsRef.current.size > 100) {
+        processedItemsRef.current = new Set();
+      }
+    }, 30000);
+    
+    return () => {
+      clearInterval(cleanupInterval);
+      clearInterval(cleanupProcessedItems);
+    };
   }, []);
   
   useEffect(() => {
@@ -112,6 +124,22 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [conveyorItems.length]);
   
   const handleScanItem = useCallback((item: ItemType) => {
+    // Check if this item has already been processed recently
+    if (item.id && processedItemsRef.current.has(item.id)) {
+      console.log("Preventing duplicate scan for item:", item.id);
+      return;
+    }
+    
+    // Add the item to the processed set to prevent duplicates
+    if (item.id) {
+      processedItemsRef.current.add(item.id);
+      
+      // After 2 seconds, remove from processed set to allow re-scanning
+      setTimeout(() => {
+        processedItemsRef.current.delete(item.id);
+      }, 2000);
+    }
+    
     setSelectedItem(item);
   }, []);
   
@@ -122,6 +150,16 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [selectedItem]);
 
   const processSelectedItem = (item: ItemType) => {
+    // Prevent duplicate processing
+    if (item.id && processedItemsRef.current.has(item.id)) {
+      console.log("Prevented duplicate processing of item:", item.id);
+      return;
+    }
+    
+    if (item.id) {
+      processedItemsRef.current.add(item.id);
+    }
+    
     const fullItem = item.id && !item.name ? 
       conveyorItems.find(i => i.id === item.id) || item : 
       item;
@@ -192,6 +230,13 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     }, 1000);
     
     setSelectedItem(null);
+    
+    // Allow reprocessing after a delay
+    if (item.id) {
+      setTimeout(() => {
+        processedItemsRef.current.delete(item.id);
+      }, 2000);
+    }
   };
 
   const handleItemDropOnScanner = useCallback((item: ItemType) => {

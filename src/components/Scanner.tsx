@@ -14,6 +14,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [ghostVisible, setGhostVisible] = useState(false);
+  const [lastItemDropTime, setLastItemDropTime] = useState(0);
   
   // Track when an item is being dragged over the entire document
   useEffect(() => {
@@ -70,11 +71,18 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setIsDropTarget(false);
     e.currentTarget.classList.remove('dragging-over-scanner');
     
-    // Check for both item data formats (direct object or ID)
-    const itemData = e.dataTransfer.getData('text/plain');
-    const itemId = e.dataTransfer.getData('itemId');
+    // Prevent multiple drops in quick succession (debounce)
+    const now = Date.now();
+    if (now - lastItemDropTime < 500) {
+      return; // Ignore drops that happen too quickly after another
+    }
+    setLastItemDropTime(now);
     
     try {
+      // Check for both item data formats (direct object or ID)
+      const itemData = e.dataTransfer.getData('text/plain');
+      const itemId = e.dataTransfer.getData('itemId');
+      
       // If we have JSON item data, use that
       if (itemData) {
         const item = JSON.parse(itemData) as ItemType;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Item as ItemType } from '@/types/game';
 import Item from './Item';
@@ -175,139 +176,70 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!draggingInfo) return;
       
-      if (draggingInfo.freeDragging && ghostImage) {
-        ghostImage.style.display = 'block';
-        ghostImage.style.left = `${e.clientX}px`;
-        ghostImage.style.top = `${e.clientY}px`;
-        ghostImage.style.transform = 'translate(-50%, -50%)';
-        
-        const item = movingItems.find(item => item.id === draggingInfo.itemId);
-        if (item) {
-          ghostImage.innerHTML = item.image;
-          ghostImage.style.fontSize = '2.5em';
-        }
-        
-        const scanners = document.querySelectorAll('.scanner-drop-area');
-        scanners.forEach(scanner => {
-          if (!scanner) return;
+      try {
+        if (draggingInfo.freeDragging && ghostImage) {
+          ghostImage.style.display = 'block';
+          ghostImage.style.left = `${e.clientX}px`;
+          ghostImage.style.top = `${e.clientY}px`;
+          ghostImage.style.transform = 'translate(-50%, -50%)';
           
-          const rect = scanner.getBoundingClientRect();
-          if (
-            e.clientX >= rect.left && 
-            e.clientX <= rect.right && 
-            e.clientY >= rect.top && 
-            e.clientY <= rect.bottom
-          ) {
-            scanner.classList.add('scan-area-highlight');
-          } else {
-            scanner.classList.remove('scan-area-highlight');
-          }
-        });
-      } else if (conveyorRef.current) {
-        const rect = conveyorRef.current.getBoundingClientRect();
-        
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        
-        const withinConveyor = 
-          e.clientX >= rect.left && 
-          e.clientX <= rect.right && 
-          e.clientY >= rect.top && 
-          e.clientY <= rect.bottom;
-        
-        if (!withinConveyor && !draggingInfo.freeDragging) {
-          setDraggingInfo({
-            ...draggingInfo,
-            freeDragging: true
-          });
-          
-          if (ghostImage) {
-            ghostImage.style.display = 'block';
-            ghostImage.style.left = `${e.clientX}px`;
-            ghostImage.style.top = `${e.clientY}px`;
-            
-            const item = movingItems.find(item => item.id === draggingInfo.itemId);
-            if (item) {
-              ghostImage.innerHTML = item.image;
-              ghostImage.style.fontSize = '2.5em';
-            }
-          }
-        } else if (withinConveyor && !draggingInfo.freeDragging) {
-          const constrainedX = Math.max(0, Math.min(100, x));
-          const constrainedY = Math.max(10, Math.min(90, y));
-          
-          setMovingItems(prevItems => {
-            return prevItems.map(item => {
-              if (item.id === draggingInfo.itemId) {
-                return {
-                  ...item,
-                  position: constrainedX,
-                  yPosition: constrainedY
-                };
-              }
-              return item;
-            });
-          });
-        }
-      }
-    };
-    
-    const handleMouseUp = (e: MouseEvent) => {
-      if (!draggingInfo) return;
-      
-      if (draggingInfo.freeDragging) {
-        const scanners = document.querySelectorAll('.scanner-drop-area');
-        let isOverScanner = false;
-        let scanner: Element | null = null;
-        
-        scanners.forEach(s => {
-          if (!s) return;
-          
-          const rect = s.getBoundingClientRect();
-          if (
-            e.clientX >= rect.left && 
-            e.clientX <= rect.right && 
-            e.clientY >= rect.top && 
-            e.clientY <= rect.bottom
-          ) {
-            isOverScanner = true;
-            scanner = s;
-            s.classList.remove('scan-area-highlight');
-          }
-        });
-        
-        if (isOverScanner && scanner) {
           const item = movingItems.find(item => item.id === draggingInfo.itemId);
           if (item) {
-            onScanItem(item);
-            setMovingItems(prev => prev.filter(i => i.id !== item.id));
+            ghostImage.innerHTML = item.image;
+            ghostImage.style.fontSize = '2.5em';
           }
-        } else {
-          if (conveyorRef.current) {
-            const rect = conveyorRef.current.getBoundingClientRect();
-            let newPosition = 50;
+          
+          const scanners = document.querySelectorAll('.scanner-drop-area');
+          scanners.forEach(scanner => {
+            if (!scanner) return;
             
+            const rect = scanner.getBoundingClientRect();
             if (
               e.clientX >= rect.left && 
-              e.clientX <= rect.right
-            ) {
-              newPosition = ((e.clientX - rect.left) / rect.width) * 100;
-            }
-            
-            let newYPosition = 50;
-            
-            if (
+              e.clientX <= rect.right && 
               e.clientY >= rect.top && 
               e.clientY <= rect.bottom
             ) {
-              newYPosition = ((e.clientY - rect.top) / rect.height) * 100;
+              scanner.classList.add('scan-area-highlight');
+            } else {
+              scanner.classList.remove('scan-area-highlight');
             }
+          });
+        } else if (conveyorRef.current) {
+          const rect = conveyorRef.current.getBoundingClientRect();
+          
+          const x = ((e.clientX - rect.left) / rect.width) * 100;
+          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          
+          const withinConveyor = 
+            e.clientX >= rect.left && 
+            e.clientX <= rect.right && 
+            e.clientY >= rect.top && 
+            e.clientY <= rect.bottom;
+          
+          if (!withinConveyor && !draggingInfo.freeDragging) {
+            setDraggingInfo({
+              ...draggingInfo,
+              freeDragging: true
+            });
             
-            const constrainedX = Math.max(20, Math.min(80, newPosition));
-            const constrainedY = Math.max(20, Math.min(80, newYPosition));
+            if (ghostImage) {
+              ghostImage.style.display = 'block';
+              ghostImage.style.left = `${e.clientX}px`;
+              ghostImage.style.top = `${e.clientY}px`;
+              
+              const item = movingItems.find(item => item.id === draggingInfo.itemId);
+              if (item) {
+                ghostImage.innerHTML = item.image;
+                ghostImage.style.fontSize = '2.5em';
+              }
+            }
+          } else if (withinConveyor && !draggingInfo.freeDragging) {
+            const constrainedX = Math.max(0, Math.min(100, x));
+            const constrainedY = Math.max(10, Math.min(90, y));
             
-            setMovingItems(prev => {
-              return prev.map(item => {
+            setMovingItems(prevItems => {
+              return prevItems.map(item => {
                 if (item.id === draggingInfo.itemId) {
                   return {
                     ...item,
@@ -320,18 +252,111 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
             });
           }
         }
+      } catch (error) {
+        console.error("Error during mouse move:", error);
       }
+    };
+    
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!draggingInfo) return;
       
-      document.querySelectorAll('.item-being-dragged').forEach(el => {
-        el.classList.remove('item-being-dragged');
-      });
-      
-      if (ghostImage) {
-        ghostImage.style.display = 'none';
+      try {
+        if (draggingInfo.freeDragging) {
+          const scanners = document.querySelectorAll('.scanner-drop-area');
+          let isOverScanner = false;
+          let scanner: Element | null = null;
+          
+          scanners.forEach(s => {
+            if (!s) return;
+            
+            const rect = s.getBoundingClientRect();
+            if (
+              e.clientX >= rect.left && 
+              e.clientX <= rect.right && 
+              e.clientY >= rect.top && 
+              e.clientY <= rect.bottom
+            ) {
+              isOverScanner = true;
+              scanner = s;
+              s.classList.remove('scan-area-highlight');
+            }
+          });
+          
+          if (isOverScanner && scanner) {
+            const item = movingItems.find(item => item.id === draggingInfo.itemId);
+            if (item) {
+              // Remove the item before scanning to prevent duplicates
+              setMovingItems(prev => prev.filter(i => i.id !== item.id));
+              // Wait a small delay before scanning to prevent duplicate events
+              setTimeout(() => {
+                onScanItem(item);
+              }, 10);
+            }
+          } else {
+            if (conveyorRef.current) {
+              const rect = conveyorRef.current.getBoundingClientRect();
+              let newPosition = 50;
+              
+              if (
+                e.clientX >= rect.left && 
+                e.clientX <= rect.right
+              ) {
+                newPosition = ((e.clientX - rect.left) / rect.width) * 100;
+              }
+              
+              let newYPosition = 50;
+              
+              if (
+                e.clientY >= rect.top && 
+                e.clientY <= rect.bottom
+              ) {
+                newYPosition = ((e.clientY - rect.top) / rect.height) * 100;
+              }
+              
+              const constrainedX = Math.max(20, Math.min(80, newPosition));
+              const constrainedY = Math.max(20, Math.min(80, newYPosition));
+              
+              setMovingItems(prev => {
+                return prev.map(item => {
+                  if (item.id === draggingInfo.itemId) {
+                    return {
+                      ...item,
+                      position: constrainedX,
+                      yPosition: constrainedY
+                    };
+                  }
+                  return item;
+                });
+              });
+            }
+          }
+        }
+        
+        document.querySelectorAll('.item-being-dragged').forEach(el => {
+          el.classList.remove('item-being-dragged');
+        });
+        
+        if (ghostImage) {
+          ghostImage.style.display = 'none';
+        }
+        
+        setDraggingInfo(null);
+        setIsDragging(null);
+      } catch (error) {
+        console.error("Error during mouse up:", error);
+        
+        // Force reset dragging state on error
+        document.querySelectorAll('.item-being-dragged').forEach(el => {
+          el.classList.remove('item-being-dragged');
+        });
+        
+        if (ghostImage) {
+          ghostImage.style.display = 'none';
+        }
+        
+        setDraggingInfo(null);
+        setIsDragging(null);
       }
-      
-      setDraggingInfo(null);
-      setIsDragging(null);
     };
     
     document.addEventListener('mousemove', handleMouseMove);
