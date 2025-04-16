@@ -28,12 +28,33 @@ const Item: React.FC<ItemProps> = ({
 }) => {
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isPressing, setIsPressing] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
 
-  const handleClick = () => {
-    if (isThrowable && onThrow) {
-      onThrow(item);
-    } else {
-      onScan(item);
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent rapid repeated clicks
+    if (isClicked) return;
+    
+    // Set clicked state to prevent multiple clicks
+    setIsClicked(true);
+    
+    // Reset clicked state after a delay
+    setTimeout(() => {
+      setIsClicked(false);
+    }, 500);
+    
+    // If it's a mouse click (not a drag event ending with a click)
+    if (e.detail > 0) {
+      if (isThrowable && onThrow) {
+        onThrow(item);
+      } else {
+        // Instead of immediately calling onScan, add a short delay
+        // This prevents accidental clicks during drag operations
+        e.stopPropagation();
+        
+        setTimeout(() => {
+          onScan(item);
+        }, 50);
+      }
     }
   };
 

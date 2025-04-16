@@ -33,6 +33,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     freeDragging: boolean;
   } | null>(null);
   const itemBeingProcessedRef = useRef<Set<string>>(new Set());
+  const clickedItemsRef = useRef<Set<string>>(new Set());
   
   useEffect(() => {
     const handleItemProcessing = (event: CustomEvent) => {
@@ -459,47 +460,49 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const handleItemClick = (item: ItemType) => {
     if (isDragging || draggingInfo) return;
     
+    if (item.id && clickedItemsRef.current.has(item.id)) {
+      console.log("Item was recently clicked, ignoring:", item.id);
+      return;
+    }
+    
     if (item.id && itemBeingProcessedRef.current.has(item.id)) {
       console.log("Item is already being processed, cannot click", item.id);
       return;
     }
     
     if (item.id) {
-      itemBeingProcessedRef.current.add(item.id);
-    }
-    
-    const clickedItem = movingItems.find(mi => mi.id === item.id);
-    if (clickedItem) {
-      const position = clickedItem.position;
-      const yPosition = clickedItem.yPosition;
+      clickedItemsRef.current.add(item.id);
       
-      const forbiddenPositions = [];
-      for (let xOffset = -50; xOffset <= 50; xOffset += 10) {
-        for (let yOffset = -50; yOffset <= 50; yOffset += 10) {
-          forbiddenPositions.push({
-            x: position + xOffset,
-            y: yPosition + yOffset
-          });
-        }
-      }
-      
-      setUsedPositions(prev => [...prev, ...forbiddenPositions].slice(0, 100));
+      setTimeout(() => {
+        clickedItemsRef.current.delete(item.id);
+      }, 2000);
     }
-    
-    setMovingItems(prevItems => prevItems.filter(i => i.id !== item.id));
-    
-    const removedEvent = new CustomEvent('itemRemoved', {
-      detail: { itemId: item.id }
-    });
-    document.dispatchEvent(removedEvent);
     
     if (item.id) {
+      itemBeingProcessedRef.current.add(item.id);
+      
       setTimeout(() => {
-        itemBeingProcessedRef.current.delete(item.id);
-      }, 3000);
+        const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
+          detail: { itemId: item.id }
+        });
+        document.dispatchEvent(draggedItemEvent);
+        
+        setTimeout(() => {
+          setMovingItems(prevItems => prevItems.filter(i => i.id !== item.id));
+          
+          const removedEvent = new CustomEvent('itemRemoved', {
+            detail: { itemId: item.id }
+          });
+          document.dispatchEvent(removedEvent);
+          
+          onScanItem(item);
+          
+          setTimeout(() => {
+            itemBeingProcessedRef.current.delete(item.id);
+          }, 3000);
+        }, 10);
+      }, 10);
     }
-    
-    onScanItem(item);
   };
   
   const getUniqueItemKey = (item: ItemType & { position: number, yPosition: number }) => {
