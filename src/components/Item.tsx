@@ -29,33 +29,38 @@ const Item: React.FC<ItemProps> = ({
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isPressing, setIsPressing] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
+  const [processingClick, setProcessingClick] = useState(false);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Prevent rapid repeated clicks
-    if (isClicked) return;
+    // Prevent handling clicks if currently processing one or in dragging state
+    if (isClicked || processingClick || isPressing) {
+      e.stopPropagation();
+      return;
+    }
     
-    // Set clicked state to prevent multiple clicks
+    // Set states to prevent multiple actions
     setIsClicked(true);
-    
-    // Reset clicked state after a delay
-    setTimeout(() => {
-      setIsClicked(false);
-    }, 500);
+    setProcessingClick(true);
     
     // If it's a mouse click (not a drag event ending with a click)
     if (e.detail > 0) {
+      e.stopPropagation();
+      
       if (isThrowable && onThrow) {
         onThrow(item);
       } else {
-        // Instead of immediately calling onScan, add a short delay
-        // This prevents accidental clicks during drag operations
-        e.stopPropagation();
-        
+        // Use a short delay to prevent accidental clicks during drag operations
         setTimeout(() => {
           onScan(item);
         }, 50);
       }
     }
+    
+    // Reset states after a delay
+    setTimeout(() => {
+      setIsClicked(false);
+      setProcessingClick(false);
+    }, 1000);
   };
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -86,9 +91,12 @@ const Item: React.FC<ItemProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!onLongPress) return;
     
+    // Don't start long press if we're already handling a click
+    if (isClicked || processingClick) return;
+    
     setIsPressing(true);
     
-    // Set a timer for long press (500ms)
+    // Set a timer for long press (200ms)
     const timer = setTimeout(() => {
       // Call the long press handler and pass the event
       try {
@@ -109,7 +117,7 @@ const Item: React.FC<ItemProps> = ({
       } catch (error) {
         console.error("Error in handleMouseDown:", error);
       }
-    }, 200); // Reduced from 500ms to 200ms for faster response
+    }, 200);
     
     setPressTimer(timer);
   };
