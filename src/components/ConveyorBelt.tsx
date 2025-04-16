@@ -33,14 +33,18 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     freeDragging: boolean;
   } | null>(null);
   const itemBeingProcessedRef = useRef<Set<string>>(new Set());
+  const clickedItemsRef = useRef<Set<string>>(new Set());
+  const processingActionsRef = useRef<Set<string>>(new Set());
   
   useEffect(() => {
     const handleItemProcessing = (event: CustomEvent) => {
       if (event.detail && event.detail.itemId) {
-        itemBeingProcessedRef.current.add(event.detail.itemId);
-        setMovingItems(prev => prev.filter(item => item.id !== event.detail.itemId));
+        const itemId = event.detail.itemId;
+        
+        itemBeingProcessedRef.current.add(itemId);
+        setMovingItems(prev => prev.filter(item => item.id !== itemId));
         setTimeout(() => {
-          itemBeingProcessedRef.current.delete(event.detail.itemId);
+          itemBeingProcessedRef.current.delete(itemId);
         }, 5000);
       }
     };
@@ -90,7 +94,8 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         
         const newItemsWithPosition = filteredItems.map(item => {
           if (isDragging === item.id || 
-              (item.id && itemBeingProcessedRef.current.has(item.id))) {
+              (item.id && itemBeingProcessedRef.current.has(item.id)) ||
+              (item.id && processingActionsRef.current.has(item.id))) {
             return null;
           }
           
@@ -146,21 +151,25 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           }
         });
         
-        setMovingItems(prevItems => {
-          const filteredPrevItems = prevItems.filter(item => 
-            !itemBeingProcessedRef.current.has(item.id) && 
-            Array.from(uniqueItems.keys()).includes(item.id)
-          );
-          
-          const itemsToAdd = Array.from(uniqueItems.values()).filter(
-            item => !filteredPrevItems.some(fi => fi.id === item.id)
-          );
-          
-          return [...filteredPrevItems, ...itemsToAdd].map(item => ({
-            ...item,
-            key: `${item.id}-${Date.now()}`
-          }));
-        });
+        const timer = setTimeout(() => {
+          setMovingItems(prevItems => {
+            const filteredPrevItems = prevItems.filter(item => 
+              !itemBeingProcessedRef.current.has(item.id) && 
+              Array.from(uniqueItems.keys()).includes(item.id)
+            );
+            
+            const itemsToAdd = Array.from(uniqueItems.values()).filter(
+              item => !filteredPrevItems.some(fi => fi.id === item.id)
+            );
+            
+            return [...filteredPrevItems, ...itemsToAdd].map(item => ({
+              ...item,
+              key: `${item.id}-${Date.now()}`
+            }));
+          });
+        }, 0);
+        
+        return () => clearTimeout(timer);
       } catch (error) {
         console.error("Error updating moving items:", error);
       }
@@ -431,9 +440,20 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   
   const handleLongPress = (item: ItemType, e: React.MouseEvent) => {
     try {
-      if (item.id && itemBeingProcessedRef.current.has(item.id)) {
+      if (item.id && (
+          itemBeingProcessedRef.current.has(item.id) || 
+          processingActionsRef.current.has(item.id)
+      )) {
         console.log("Item is already being processed, cannot grab", item.id);
         return;
+      }
+      
+      if (item.id) {
+        processingActionsRef.current.add(item.id);
+        
+        setTimeout(() => {
+          processingActionsRef.current.delete(item.id);
+        }, 2000);
       }
       
       const element = e.currentTarget as HTMLElement;
@@ -453,11 +473,22 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       });
     } catch (error) {
       console.error("Error in handleLongPress:", error);
+      if (item.id) {
+        processingActionsRef.current.delete(item.id);
+      }
     }
   };
   
   const handleItemClick = (item: ItemType) => {
     if (isDragging || draggingInfo) return;
+    
+    if (item.id && (
+        clickedItemsRef.current.has(item.id) || 
+        processingActionsRef.current.has(item.id)
+    )) {
+      console.log("Item was recently clicked or is being processed, ignoring:", item.id);
+      return;
+    }
     
     if (item.id && itemBeingProcessedRef.current.has(item.id)) {
       console.log("Item is already being processed, cannot click", item.id);
@@ -465,41 +496,39 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
     }
     
     if (item.id) {
-      itemBeingProcessedRef.current.add(item.id);
-    }
-    
-    const clickedItem = movingItems.find(mi => mi.id === item.id);
-    if (clickedItem) {
-      const position = clickedItem.position;
-      const yPosition = clickedItem.yPosition;
+      clickedItemsRef.current.add(item.id);
+      processingActionsRef.current.add(item.id);
       
-      const forbiddenPositions = [];
-      for (let xOffset = -50; xOffset <= 50; xOffset += 10) {
-        for (let yOffset = -50; yOffset <= 50; yOffset += 10) {
-          forbiddenPositions.push({
-            x: position + xOffset,
-            y: yPosition + yOffset
-          });
-        }
-      }
+      setTimeout(() => {
+        clickedItemsRef.current.delete(item.id);
+      }, 2000);
       
-      setUsedPositions(prev => [...prev, ...forbiddenPositions].slice(0, 100));
+      setTimeout(() => {
+        processingActionsRef.current.delete(item.id);
+      }, 3000);
     }
-    
-    setMovingItems(prevItems => prevItems.filter(i => i.id !== item.id));
-    
-    const removedEvent = new CustomEvent('itemRemoved', {
-      detail: { itemId: item.id }
-    });
-    document.dispatchEvent(removedEvent);
     
     if (item.id) {
+      itemBeingProcessedRef.current.add(item.id);
+      
+      setMovingItems(prevItems => prevItems.filter(i => i.id !== item.id));
+      
+      const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
+        detail: { itemId: item.id }
+      });
+      document.dispatchEvent(draggedItemEvent);
+      
+      const removedEvent = new CustomEvent('itemRemoved', {
+        detail: { itemId: item.id }
+      });
+      document.dispatchEvent(removedEvent);
+      
+      onScanItem(item);
+      
       setTimeout(() => {
         itemBeingProcessedRef.current.delete(item.id);
       }, 3000);
     }
-    
-    onScanItem(item);
   };
   
   const getUniqueItemKey = (item: ItemType & { position: number, yPosition: number }) => {
