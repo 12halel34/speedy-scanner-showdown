@@ -30,10 +30,11 @@ const Item: React.FC<ItemProps> = ({
   const [isPressing, setIsPressing] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
   const [processingClick, setProcessingClick] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent handling clicks if currently processing one or in dragging state
-    if (isClicked || processingClick || isPressing) {
+    if (isClicked || processingClick || isPressing || isDragging) {
       e.stopPropagation();
       return;
     }
@@ -65,6 +66,7 @@ const Item: React.FC<ItemProps> = ({
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     if (isDraggable) {
+      setIsDragging(true);
       e.dataTransfer.setData('text/plain', JSON.stringify(item));
       e.dataTransfer.effectAllowed = 'move';
       
@@ -85,6 +87,10 @@ const Item: React.FC<ItemProps> = ({
         }
       }, 100);
     }
+  };
+  
+  const handleDragEnd = () => {
+    setIsDragging(false);
   };
 
   // Handle mousedown for long press detection
@@ -147,11 +153,13 @@ const Item: React.FC<ItemProps> = ({
         isAnimating && "conveyor-animation",
         isThrowable && "throwable-item",
         isDraggable && "cursor-grab active:cursor-grabbing",
-        isPressing && "scale-105"
+        isPressing && "scale-105",
+        isDragging && "opacity-70"
       )}
       onClick={handleClick}
       draggable={isDraggable}
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
