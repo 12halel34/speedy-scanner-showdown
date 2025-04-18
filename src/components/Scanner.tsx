@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Scan } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
@@ -18,15 +17,14 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   const processedItemsRef = useRef<Set<string>>(new Set());
   const processingRef = useRef<boolean>(false);
   const activeDropTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentlyProcessingDrop, setCurrentlyProcessingDrop] = useState(false);
   
-  // Track when an item is being dragged over the entire document
   useEffect(() => {
     const handleDragEnterDocument = () => {
       setGhostVisible(true);
     };
     
     const handleDragLeaveDocument = () => {
-      // Only hide ghost when actually leaving the document
       if (!document.querySelector('.dragging-over-scanner')) {
         setGhostVisible(false);
       }
@@ -41,7 +39,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     };
   }, []);
   
-  // Cleanup processed items cache periodically
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       if (processedItemsRef.current.size > 50) {
@@ -52,12 +49,10 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     return () => clearInterval(cleanupInterval);
   }, []);
 
-  // Subscribe to item removed events from the conveyor
   useEffect(() => {
     const handleItemRemoved = (event: CustomEvent) => {
       if (event.detail && event.detail.itemId) {
         processedItemsRef.current.add(event.detail.itemId);
-        // Clear from processed cache after 5 seconds
         setTimeout(() => {
           processedItemsRef.current.delete(event.detail.itemId);
         }, 5000);
@@ -77,7 +72,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setIsScanning(true);
     onScan();
     
-    // Reset scanning state after animation completes
     setTimeout(() => {
       setIsScanning(false);
     }, 300);
@@ -87,10 +81,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setIsDropTarget(true);
-    
-    // Add a class to indicate dragging over scanner
     e.currentTarget.classList.add('dragging-over-scanner');
-    // Add scanner-drop-area class for general detection
     e.currentTarget.classList.add('scanner-drop-area');
   };
   
@@ -104,28 +95,27 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setIsDropTarget(false);
     e.currentTarget.classList.remove('dragging-over-scanner');
     
-    if (processingRef.current) {
+    if (processingRef.current || currentlyProcessingDrop) {
       console.log("Already processing an item, ignoring drop");
       return;
     }
     
-    // Prevent multiple drops in quick succession (debounce)
+    setCurrentlyProcessingDrop(true);
+    
     const now = Date.now();
     if (now - lastItemDropTime < 1000) {
       console.log("Ignoring drop due to debounce", now - lastItemDropTime);
-      return; // Ignore drops that happen too quickly after another
+      setCurrentlyProcessingDrop(false);
+      return;
     }
     setLastItemDropTime(now);
     
     try {
-      // Mark that we're processing an item
       processingRef.current = true;
       
-      // Check for both item data formats (direct object or ID)
       const itemData = e.dataTransfer.getData('text/plain');
       const itemId = e.dataTransfer.getData('itemId');
       
-      // For either case, check if we've recently processed this item
       if (itemData) {
         const item = JSON.parse(itemData) as ItemType;
         
@@ -133,86 +123,77 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
           console.log("Already processed item:", item.id);
           setTimeout(() => {
             processingRef.current = false;
+            setCurrentlyProcessingDrop(false);
           }, 500);
           return;
         }
         
         if (item.id) {
           processedItemsRef.current.add(item.id);
-          // Dispatch an event to notify the conveyor belt this item is being processed
           const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
             detail: { itemId: item.id }
           });
           document.dispatchEvent(draggedItemEvent);
           
-          // Remove from processed set after a while
           setTimeout(() => {
             processedItemsRef.current.delete(item.id);
           }, 5000);
         }
         
-        // Clear any active drop timeout
         if (activeDropTimeoutRef.current) {
           clearTimeout(activeDropTimeoutRef.current);
           activeDropTimeoutRef.current = null;
         }
         
-        // Process the item with a slight delay to allow rendering to catch up
         activeDropTimeoutRef.current = setTimeout(() => {
           onItemDrop(item);
           activeDropTimeoutRef.current = null;
           
-          // Reset processing flag after a delay
           setTimeout(() => {
             processingRef.current = false;
-          }, 500);
-        }, 50);
+            setCurrentlyProcessingDrop(false);
+          }, 800);
+        }, 100);
       } 
-      // If we have an itemId from the conveyor belt, pass that to the parent
       else if (itemId) {
         if (processedItemsRef.current.has(itemId)) {
           console.log("Already processed item with ID:", itemId);
           setTimeout(() => {
             processingRef.current = false;
+            setCurrentlyProcessingDrop(false);
           }, 500);
           return;
         }
         
         processedItemsRef.current.add(itemId);
-        // Dispatch an event to notify the conveyor belt this item is being processed
         const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
           detail: { itemId: itemId }
         });
         document.dispatchEvent(draggedItemEvent);
         
-        // Remove from processed set after a while
         setTimeout(() => {
           processedItemsRef.current.delete(itemId);
         }, 5000);
         
-        // Clear any active drop timeout
         if (activeDropTimeoutRef.current) {
           clearTimeout(activeDropTimeoutRef.current);
           activeDropTimeoutRef.current = null;
         }
         
-        // Process the item with a slight delay
         activeDropTimeoutRef.current = setTimeout(() => {
-          // The onItemDrop handler will need to find the item by ID
-          // We'll pass a minimal item with just the ID, and let the parent component handle it
           onItemDrop({ id: itemId } as ItemType);
           activeDropTimeoutRef.current = null;
           
-          // Reset processing flag after a delay
           setTimeout(() => {
             processingRef.current = false;
-          }, 500);
-        }, 50);
+            setCurrentlyProcessingDrop(false);
+          }, 800);
+        }, 100);
       } else {
         processingRef.current = false;
+        setCurrentlyProcessingDrop(false);
       }
       
-      // Trigger scan animation
       setIsScanning(true);
       setTimeout(() => {
         setIsScanning(false);
@@ -220,15 +201,19 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     } catch (error) {
       console.error('Error processing dragged item:', error);
       toast.error('Failed to process item');
-      // Make sure to reset processing flag on error
       processingRef.current = false;
+      setCurrentlyProcessingDrop(false);
     }
   };
   
   return (
     <div className="relative flex flex-col items-center">
       <div 
-        className={`flex flex-col items-center justify-center bg-gray-100 border-2 border-dashed ${isDropTarget ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-lg p-4 mb-4 h-32 w-32 transition-colors scanner-drop-area`}
+        className={`flex flex-col items-center justify-center bg-gray-100 border-2 border-dashed ${
+          isDropTarget ? 'border-red-500 bg-red-50' : 
+          currentlyProcessingDrop ? 'border-yellow-500 bg-yellow-50' : 
+          'border-gray-300'
+        } rounded-lg p-4 mb-4 h-32 w-32 transition-colors scanner-drop-area`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

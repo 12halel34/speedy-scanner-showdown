@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Item as ItemType } from '@/types/game';
 import { cn } from '@/lib/utils';
 
@@ -31,10 +30,19 @@ const Item: React.FC<ItemProps> = ({
   const [isClicked, setIsClicked] = useState(false);
   const [processingClick, setProcessingClick] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const dragStartTimeRef = useRef<number>(0);
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent handling clicks if currently processing one or in dragging state
     if (isClicked || processingClick || isPressing || isDragging) {
+      e.stopPropagation();
+      return;
+    }
+    
+    // Don't process click if it's too close to a drag end
+    const now = Date.now();
+    const dragEndedRecently = now - dragStartTimeRef.current < 300;
+    if (dragEndedRecently) {
       e.stopPropagation();
       return;
     }
@@ -66,6 +74,7 @@ const Item: React.FC<ItemProps> = ({
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     if (isDraggable) {
+      dragStartTimeRef.current = Date.now();
       setIsDragging(true);
       e.dataTransfer.setData('text/plain', JSON.stringify(item));
       e.dataTransfer.effectAllowed = 'move';
@@ -86,14 +95,22 @@ const Item: React.FC<ItemProps> = ({
           document.body.removeChild(dragImage);
         }
       }, 100);
+      
+      // Add a class to the document to indicate dragging
+      document.documentElement.classList.add('item-dragging');
     }
   };
   
   const handleDragEnd = () => {
     setIsDragging(false);
+    document.documentElement.classList.remove('item-dragging');
+    
+    // Set a short timeout to prevent immediate click after drag
+    setTimeout(() => {
+      dragStartTimeRef.current = 0;
+    }, 300);
   };
 
-  // Handle mousedown for long press detection
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!onLongPress) return;
     
@@ -128,7 +145,6 @@ const Item: React.FC<ItemProps> = ({
     setPressTimer(timer);
   };
   
-  // Clear the timer if mouse is released before long press threshold
   const handleMouseUp = () => {
     if (pressTimer) {
       clearTimeout(pressTimer);
@@ -137,7 +153,6 @@ const Item: React.FC<ItemProps> = ({
     setIsPressing(false);
   };
   
-  // Clear the timer if mouse leaves the element
   const handleMouseLeave = () => {
     if (pressTimer) {
       clearTimeout(pressTimer);

@@ -35,6 +35,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
   const itemBeingProcessedRef = useRef<Set<string>>(new Set());
   const clickedItemsRef = useRef<Set<string>>(new Set());
   const processingActionsRef = useRef<Set<string>>(new Set());
+  const [activelyDraggedItems, setActivelyDraggedItems] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     const handleItemProcessing = (event: CustomEvent) => {
@@ -93,8 +94,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         });
         
         const newItemsWithPosition = filteredItems.map(item => {
-          if (isDragging === item.id || 
-              (item.id && itemBeingProcessedRef.current.has(item.id)) ||
+          if ((item.id && itemBeingProcessedRef.current.has(item.id)) ||
               (item.id && processingActionsRef.current.has(item.id))) {
             return null;
           }
@@ -155,7 +155,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
           setMovingItems(prevItems => {
             const filteredPrevItems = prevItems.filter(item => 
               !itemBeingProcessedRef.current.has(item.id) && 
-              Array.from(uniqueItems.keys()).includes(item.id)
+              (Array.from(uniqueItems.keys()).includes(item.id) || activelyDraggedItems.has(item.id))
             );
             
             const itemsToAdd = Array.from(uniqueItems.values()).filter(
@@ -174,7 +174,7 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
         console.error("Error updating moving items:", error);
       }
     }
-  }, [items, conveyorWidth, conveyorHeight, isDragging]);
+  }, [items, conveyorWidth, conveyorHeight, isDragging, activelyDraggedItems]);
   
   useEffect(() => {
     if (movingItems.length === 0) return;
@@ -344,6 +344,12 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
             if (item) {
               itemBeingProcessedRef.current.add(item.id);
               
+              setActivelyDraggedItems(prev => {
+                const updated = new Set(prev);
+                updated.delete(item.id);
+                return updated;
+              });
+              
               setMovingItems(prev => prev.filter(i => i.id !== item.id));
               
               const draggedItemEvent = new CustomEvent('itemRemoved', {
@@ -450,6 +456,12 @@ const ConveyorBelt: React.FC<ConveyorBeltProps> = ({
       
       if (item.id) {
         processingActionsRef.current.add(item.id);
+        
+        setActivelyDraggedItems(prev => {
+          const updated = new Set(prev);
+          updated.add(item.id);
+          return updated;
+        });
         
         setTimeout(() => {
           processingActionsRef.current.delete(item.id);

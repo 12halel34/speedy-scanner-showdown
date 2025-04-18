@@ -95,3 +95,14 @@
 .opacity-70 {
   opacity: 0.7 !important;
 }
+
+/* Add a global style to track when dragging is happening */
+.item-dragging * {
+  pointer-events: auto !important;
+}
+
+/* Ensure dragged items remain visible */
+.item-dragging [draggable=true] {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
