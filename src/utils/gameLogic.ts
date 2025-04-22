@@ -64,6 +64,20 @@ export const initGame = (): GameState => {
   };
 };
 
+export const getRandomItems = (count: number, invalidItemProbability = 0.4): Item[] => {
+  const items: Item[] = [];
+  const allItems = getAllItems();
+  
+  for (let i = 0; i < count; i++) {
+    const isInvalid = Math.random() < invalidItemProbability; // 40% chance for invalid items now
+    const pool = isInvalid ? invalidItems : marketItems;
+    const randomItem = pool[Math.floor(Math.random() * pool.length)];
+    items.push({ ...randomItem });
+  }
+  
+  return items;
+};
+
 // Process an item scan
 export const processItemScan = (state: GameState, item: Item): GameState => {
   // Check if item is in the correct location before scanning

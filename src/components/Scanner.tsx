@@ -103,7 +103,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     setCurrentlyProcessingDrop(true);
     
     const now = Date.now();
-    if (now - lastItemDropTime < 1000) {
+    if (now - lastItemDropTime < 500) {
       console.log("Ignoring drop due to debounce", now - lastItemDropTime);
       setCurrentlyProcessingDrop(false);
       return;
@@ -135,27 +135,15 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
           });
           document.dispatchEvent(draggedItemEvent);
           
-          setTimeout(() => {
-            processedItemsRef.current.delete(item.id);
-          }, 5000);
-        }
-        
-        if (activeDropTimeoutRef.current) {
-          clearTimeout(activeDropTimeoutRef.current);
-          activeDropTimeoutRef.current = null;
-        }
-        
-        activeDropTimeoutRef.current = setTimeout(() => {
           onItemDrop(item);
-          activeDropTimeoutRef.current = null;
           
           setTimeout(() => {
+            processedItemsRef.current.delete(item.id);
             processingRef.current = false;
             setCurrentlyProcessingDrop(false);
-          }, 800);
-        }, 100);
-      } 
-      else if (itemId) {
+          }, 1000);
+        }
+      } else if (itemId) {
         if (processedItemsRef.current.has(itemId)) {
           console.log("Already processed item with ID:", itemId);
           setTimeout(() => {
@@ -171,24 +159,13 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
         });
         document.dispatchEvent(draggedItemEvent);
         
+        onItemDrop({ id: itemId } as ItemType);
+        
         setTimeout(() => {
           processedItemsRef.current.delete(itemId);
-        }, 5000);
-        
-        if (activeDropTimeoutRef.current) {
-          clearTimeout(activeDropTimeoutRef.current);
-          activeDropTimeoutRef.current = null;
-        }
-        
-        activeDropTimeoutRef.current = setTimeout(() => {
-          onItemDrop({ id: itemId } as ItemType);
-          activeDropTimeoutRef.current = null;
-          
-          setTimeout(() => {
-            processingRef.current = false;
-            setCurrentlyProcessingDrop(false);
-          }, 800);
-        }, 100);
+          processingRef.current = false;
+          setCurrentlyProcessingDrop(false);
+        }, 1000);
       } else {
         processingRef.current = false;
         setCurrentlyProcessingDrop(false);
@@ -197,7 +174,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
       setIsScanning(true);
       setTimeout(() => {
         setIsScanning(false);
-      }, 500);
+      }, 300);
     } catch (error) {
       console.error('Error processing dragged item:', error);
       toast.error('Failed to process item');
