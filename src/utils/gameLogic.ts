@@ -1,5 +1,6 @@
+
 import { GameState, Item } from '@/types/game';
-import { getRandomItems, getRandomVegetables, invalidItems } from '@/data/items';
+import { getRandomItems as getItemsFromData, getRandomVegetables, invalidItems, marketItems } from '@/data/items';
 import { toast } from 'sonner';
 
 export const GAME_TIME = 60; // 60 seconds game time
@@ -43,7 +44,7 @@ export const initGame = (): GameState => {
   const highScore = savedHighScore ? parseInt(savedHighScore, 10) : 0;
   
   // Get initial items with different positions
-  const items = getRandomItems(INITIAL_ITEMS_COUNT).map((item, index) => {
+  const items = getRandomGameItems(INITIAL_ITEMS_COUNT).map((item, index) => {
     // Calculate position to ensure items are well-spaced
     // Invalid items initially go to the wrong side (right side)
     const initialLocation: 'left' | 'right' = isMarketItem(item) ? 'right' : 'right';
@@ -64,9 +65,9 @@ export const initGame = (): GameState => {
   };
 };
 
-export const getRandomItems = (count: number, invalidItemProbability = 0.4): Item[] => {
+// Use a different name for the local getRandomItems function to avoid conflict
+export const getRandomGameItems = (count: number, invalidItemProbability = 0.4): Item[] => {
   const items: Item[] = [];
-  const allItems = getAllItems();
   
   for (let i = 0; i < count; i++) {
     const isInvalid = Math.random() < invalidItemProbability; // 40% chance for invalid items now
@@ -133,7 +134,7 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   const newItemsCount = Math.floor(Math.random() * 2) + 1; // 1-2 new items
   
   // Get regular items
-  const newRegularItems = getRandomItems(newItemsCount)
+  const newRegularItems = getRandomGameItems(newItemsCount)
     .map(item => ({
       ...item, 
       location: 'right' as const
@@ -163,7 +164,7 @@ export const moveItem = (state: GameState, itemId: string, destination: 'left' |
     if (item.id === itemId) {
       // If moving to the correct location based on item type
       const isCorrectMove = (isMarketItem(item) && destination === 'right') || 
-                           (!isMarketItem(item) && destination === 'left');
+                          (!isMarketItem(item) && destination === 'left');
       
       // Award points for correct sorting
       if (isCorrectMove && item.location !== destination) {
@@ -189,8 +190,8 @@ export const moveItem = (state: GameState, itemId: string, destination: 'left' |
     ...state,
     items: updatedItems,
     score: isMarketItem(state.items.find(i => i.id === itemId)!) === (destination === 'right') ? 
-           state.score + 50 : 
-           state.score
+          state.score + 50 : 
+          state.score
   };
 };
 

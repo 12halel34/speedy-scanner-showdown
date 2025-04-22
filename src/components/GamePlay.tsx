@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -10,10 +9,11 @@ import {
   updateGameTime,
   saveHighScore,
   MAX_MISTAKES,
-  isMarketItem
+  isMarketItem,
+  getRandomGameItems
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
-import { getRandomItems } from '@/data/items';
+import { getRandomVegetables } from '@/data/items';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -35,17 +35,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const lastScannedPositionsRef = useRef<{id: string, timestamp: number}[]>([]);
   const processedItemsRef = useRef<Set<string>>(new Set());
   
-  // Listen for item processing events
   useEffect(() => {
     const handleItemProcessing = (event: CustomEvent) => {
       if (event.detail && event.detail.itemId) {
-        // Remove item from conveyor immediately to prevent duplication
         setConveyorItems(prev => prev.filter(i => i.id !== event.detail.itemId));
-        
-        // Add to processing set to prevent reprocessing
         itemProcessingRef.current.add(event.detail.itemId);
-        
-        // Clear from processing set after a while
         setTimeout(() => {
           itemProcessingRef.current.delete(event.detail.itemId);
         }, 5000);
@@ -60,7 +54,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, []);
   
   useEffect(() => {
-    const initialItems = getRandomItems(minConveyorItems).map(item => ({
+    const initialItems = getRandomGameItems(minConveyorItems).map(item => ({
       ...item,
       location: undefined
     }));
@@ -109,7 +103,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       );
     }, 5000);
     
-    // Also clean up the processed items cache occasionally
     const cleanupProcessedItems = setInterval(() => {
       if (processedItemsRef.current.size > 100) {
         processedItemsRef.current = new Set();
@@ -126,17 +119,15 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     if (conveyorItems.length < minConveyorItems) {
       const itemsToAdd = minConveyorItems - conveyorItems.length;
       
-      // Use a staggered approach to add items to prevent batch creation
       const addItems = () => {
         try {
-          const newItem = getRandomItems(1)[0];
+          const newItem = getRandomGameItems(1)[0];
           const newItemWithId = {
             ...newItem,
             id: `${newItem.id || newItem.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             location: undefined
           };
           
-          // Only add if this ID isn't already being processed
           if (!itemProcessingRef.current.has(newItemWithId.id)) {
             setConveyorItems(prev => [...prev, newItemWithId]);
           }
@@ -158,17 +149,14 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [conveyorItems.length]);
   
   const handleScanItem = useCallback((item: ItemType) => {
-    // Check if this item has already been processed recently
     if (item.id && processedItemsRef.current.has(item.id)) {
       console.log("Preventing duplicate scan for item:", item.id);
       return;
     }
     
-    // Add the item to the processed set to prevent duplicates
     if (item.id) {
       processedItemsRef.current.add(item.id);
       
-      // After 2 seconds, remove from processed set to allow re-scanning
       setTimeout(() => {
         processedItemsRef.current.delete(item.id);
       }, 2000);
@@ -184,7 +172,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, [selectedItem]);
 
   const processSelectedItem = (item: ItemType) => {
-    // Prevent duplicate processing
     if (item.id && processedItemsRef.current.has(item.id + "_processed")) {
       console.log("Prevented duplicate processing of item:", item.id);
       return;
@@ -193,7 +180,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     if (item.id) {
       processedItemsRef.current.add(item.id + "_processed");
       
-      // Clear from processed set after some time
       setTimeout(() => {
         processedItemsRef.current.delete(item.id + "_processed");
       }, 5000);
@@ -255,12 +241,11 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       });
     }
     
-    // Then add a new item with a delay to prevent rapid appearance
     const newItemsCount = 1;
     
     setTimeout(() => {
       try {
-        const newItems = getRandomItems(newItemsCount).map(item => ({
+        const newItems = getRandomGameItems(newItemsCount).map(item => ({
           ...item,
           id: `${item.id || item.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           location: undefined
@@ -276,23 +261,19 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   };
 
   const handleItemDropOnScanner = useCallback((item: ItemType) => {
-    // Check if already in processed items
     if (item.id && processedItemsRef.current.has(item.id + "_dropped")) {
       console.log("Prevented duplicate drop handling:", item.id);
       return;
     }
     
-    // Add to processed set with drop-specific marker
     if (item.id) {
       processedItemsRef.current.add(item.id + "_dropped");
       
-      // Clear from processed set after some time
       setTimeout(() => {
         processedItemsRef.current.delete(item.id + "_dropped");
       }, 3000);
     }
     
-    // Process the item after a short delay
     setTimeout(() => {
       try {
         processSelectedItem(item);
@@ -303,7 +284,6 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   }, []);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {
-    // Make sure we're not trying to remove an item that's already being processed
     if (item.id && itemProcessingRef.current.has(item.id)) {
       return;
     }
@@ -312,7 +292,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     
     setTimeout(() => {
       try {
-        const newItem = getRandomItems(1)[0];
+        const newItem = getRandomGameItems(1)[0];
         const newItemWithId = {
           ...newItem,
           id: `${newItem.id || newItem.name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
