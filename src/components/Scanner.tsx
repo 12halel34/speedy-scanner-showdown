@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Scan } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
 import { toast } from 'sonner';
-import { isMarketItem } from '@/utils/gameLogic';
 
 interface ScannerProps {
   onScan: () => void;
@@ -10,13 +9,11 @@ interface ScannerProps {
 }
 
 const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
-  const [isScanning, setIsScanning] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [ghostVisible, setGhostVisible] = useState(false);
   const [lastItemDropTime, setLastItemDropTime] = useState(0);
   const processedItemsRef = useRef<Set<string>>(new Set());
   const processingRef = useRef<boolean>(false);
-  const activeDropTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [currentlyProcessingDrop, setCurrentlyProcessingDrop] = useState(false);
   
   useEffect(() => {
@@ -101,9 +98,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     
     try {
       processingRef.current = true;
-      
       const itemData = e.dataTransfer.getData('text/plain');
-      const itemId = e.dataTransfer.getData('itemId');
       
       if (itemData) {
         const item = JSON.parse(itemData) as ItemType;
@@ -125,6 +120,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
           document.dispatchEvent(draggedItemEvent);
           
           onItemDrop(item);
+          onScan();
           
           setTimeout(() => {
             processedItemsRef.current.delete(item.id);
@@ -145,7 +141,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     <div className="relative flex flex-col items-center">
       <div 
         className={`flex flex-col items-center justify-center bg-gray-100 border-2 border-dashed ${
-          isDropTarget ? 'border-red-500 bg-red-50' : 
+          isDropTarget ? 'border-green-500 bg-green-50' : 
           currentlyProcessingDrop ? 'border-yellow-500 bg-yellow-50' : 
           'border-gray-300'
         } rounded-lg p-4 mb-4 h-32 w-32 transition-colors scanner-drop-area`}
@@ -156,13 +152,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
         <div className="text-sm text-gray-500 text-center mb-2">Drop items here</div>
         <div className="text-3xl">🛒</div>
       </div>
-
-      <button 
-        onClick={onScan}
-        className="bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95 opacity-0 pointer-events-none"
-      >
-        <Scan size={40} />
-      </button>
       
       <div className="mt-2 text-center text-sm font-semibold">
         SCAN AREA
