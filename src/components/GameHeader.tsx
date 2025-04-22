@@ -1,15 +1,24 @@
 
 import React from 'react';
-import { Clock, Zap, XCircle } from 'lucide-react';
+import { Clock, Zap, XCircle, Star } from 'lucide-react';
 
 interface GameHeaderProps {
   timeLeft: number;
   score: number;
   mistakes: number;
   maxMistakes: number;
+  combo?: number;
+  multiplier?: number;
 }
 
-const GameHeader: React.FC<GameHeaderProps> = ({ timeLeft, score, mistakes, maxMistakes }) => {
+const GameHeader: React.FC<GameHeaderProps> = ({ 
+  timeLeft, 
+  score, 
+  mistakes, 
+  maxMistakes,
+  combo = 0,
+  multiplier = 1
+}) => {
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -28,6 +37,20 @@ const GameHeader: React.FC<GameHeaderProps> = ({ timeLeft, score, mistakes, maxM
         <Zap className="text-amber-500 mr-2" />
         <div className="text-2xl font-bold">{score}</div>
       </div>
+      
+      {combo > 0 && (
+        <div className="flex items-center">
+          <Star className={`${combo > 5 ? 'text-yellow-500 animate-pulse' : 'text-blue-500'} mr-2`} />
+          <div className="text-lg font-bold">
+            <span className={`${combo > 5 ? 'text-yellow-500' : 'text-blue-500'}`}>
+              {combo}× 
+            </span>
+            <span className="text-sm ml-1">
+              ({multiplier.toFixed(1)}×)
+            </span>
+          </div>
+        </div>
+      )}
       
       <div className="flex items-center">
         <XCircle className="text-red-500 mr-2" />

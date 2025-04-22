@@ -209,7 +209,10 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setGameState(prev => ({
         ...prev,
         score: prev.score + scoreIncrease,
-        scannedItems: [...prev.scannedItems, fullItem]
+        scannedItems: [...prev.scannedItems, fullItem],
+        combo: prev.combo + 1,
+        comboMultiplier: prev.combo % 3 === 2 ? prev.comboMultiplier + 0.5 : prev.comboMultiplier,
+        lastScannedCategory: fullItem.category
       }));
       
       toast.success(`+${scoreIncrease} points!`);
@@ -236,7 +239,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         return {
           ...prev,
           mistakes: newMistakes,
-          gameStatus: newGameStatus
+          gameStatus: newGameStatus,
+          combo: 0,
+          comboMultiplier: 1
         };
       });
     }
@@ -315,6 +320,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
         score={gameState.score}
         mistakes={gameState.mistakes}
         maxMistakes={MAX_MISTAKES}
+        combo={gameState.combo}
+        multiplier={gameState.comboMultiplier}
       />
 
       <div className="flex flex-col mt-4">

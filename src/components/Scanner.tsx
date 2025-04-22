@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Scan } from 'lucide-react';
+import { Scan, Star, Sparkles } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
   const processedItemsRef = useRef<Set<string>>(new Set());
   const processingRef = useRef<boolean>(false);
   const [currentlyProcessingDrop, setCurrentlyProcessingDrop] = useState(false);
+  const [showScanEffect, setShowScanEffect] = useState(false);
   
   useEffect(() => {
     const handleDragEnterDocument = () => {
@@ -76,6 +77,12 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     e.currentTarget.classList.remove('dragging-over-scanner');
   };
   
+  const playScanSound = () => {
+    const scanSound = new Audio('/scan-beep.mp3');
+    scanSound.volume = 0.3;
+    scanSound.play().catch(e => console.log('Error playing sound:', e));
+  };
+  
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDropTarget(false);
@@ -119,6 +126,11 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
           });
           document.dispatchEvent(draggedItemEvent);
           
+          setShowScanEffect(true);
+          setTimeout(() => setShowScanEffect(false), 600);
+          
+          playScanSound();
+          
           onItemDrop(item);
           onScan();
           
@@ -144,13 +156,21 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
           isDropTarget ? 'border-green-500 bg-green-50' : 
           currentlyProcessingDrop ? 'border-yellow-500 bg-yellow-50' : 
           'border-gray-300'
-        } rounded-lg p-4 mb-4 h-32 w-32 transition-colors scanner-drop-area`}
+        } rounded-lg p-4 mb-4 h-32 w-32 transition-colors scanner-drop-area ${isDropTarget ? 'drop-here-animation' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         <div className="text-sm text-gray-500 text-center mb-2">Drop items here</div>
-        <div className="text-3xl">🛒</div>
+        <div className="text-3xl relative">
+          🛒
+          {showScanEffect && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="scanner-flash bg-green-400 opacity-50 absolute inset-0 rounded-full"></div>
+              <Sparkles className="text-yellow-400 absolute" size={32} />
+            </div>
+          )}
+        </div>
       </div>
       
       <div className="mt-2 text-center text-sm font-semibold">

@@ -33,6 +33,9 @@ export interface GameState {
   gameStatus: 'menu' | 'playing' | 'paused' | 'gameOver';
   highScore: number;
   lanes: number[];
+  combo: number;
+  comboMultiplier: number;
+  lastScannedCategory: string;
 }
 
 export interface Achievement {

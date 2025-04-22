@@ -1,4 +1,3 @@
-
 import { GameState, Item } from '@/types/game';
 import { getRandomItems as getItemsFromData, getRandomVegetables, invalidItems, marketItems } from '@/data/items';
 import { toast } from 'sonner';
@@ -18,7 +17,10 @@ export const initialGameState: GameState = {
   lanes: [],
   mistakes: 0,
   gameStatus: 'menu',
-  highScore: 0
+  highScore: 0,
+  combo: 0,
+  comboMultiplier: 1,
+  lastScannedCategory: ''
 };
 
 // Helper function to check if an item is a market item
@@ -61,7 +63,10 @@ export const initGame = (): GameState => {
     highScore,
     lanes: [0, 1, 2, 3],
     throwableItems: [],
-    thrownItems: []
+    thrownItems: [],
+    combo: 0,
+    comboMultiplier: 1,
+    lastScannedCategory: ''
   };
 };
 
@@ -79,6 +84,43 @@ export const getRandomGameItems = (count: number, invalidItemProbability = 0.4):
   return items;
 };
 
+// Generate fun compliments for successful scans
+const generateCompliment = (comboCount: number): string => {
+  if (comboCount <= 1) {
+    const basicCompliments = [
+      "Great scan!",
+      "Nice job!",
+      "Perfect!",
+      "Keep it up!",
+    ];
+    return basicCompliments[Math.floor(Math.random() * basicCompliments.length)];
+  } else if (comboCount <= 3) {
+    const goodCompliments = [
+      "You're on fire!",
+      "Great combo!",
+      "Cashier skills leveling up!",
+      "Speedy scanning!"
+    ];
+    return goodCompliments[Math.floor(Math.random() * goodCompliments.length)];
+  } else if (comboCount <= 6) {
+    const awesomeCompliments = [
+      "INCREDIBLE!",
+      "AMAZING COMBO!",
+      "CASHIER SUPERSTAR!",
+      "LIGHTNING FAST!"
+    ];
+    return awesomeCompliments[Math.floor(Math.random() * awesomeCompliments.length)];
+  } else {
+    const epicCompliments = [
+      "UNSTOPPABLE!!!",
+      "CASHIER GOD MODE!!!",
+      "LEGENDARY SCANNING!!!",
+      "SCANNER NINJA!!!"
+    ];
+    return epicCompliments[Math.floor(Math.random() * epicCompliments.length)];
+  }
+};
+
 // Process an item scan
 export const processItemScan = (state: GameState, item: Item): GameState => {
   // Check if item is in the correct location before scanning
@@ -92,6 +134,8 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     return {
       ...state,
       mistakes: state.mistakes + 1,
+      combo: 0,
+      comboMultiplier: 1,
       gameStatus: state.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : state.gameStatus
     };
   }
@@ -102,6 +146,8 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     return {
       ...state,
       mistakes: state.mistakes + 1,
+      combo: 0,
+      comboMultiplier: 1,
       gameStatus: state.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : state.gameStatus
     };
   }
@@ -112,20 +158,45 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     return state;
   }
   
-  // Update the state with the scanned item
-  const newScore = state.score + Math.floor(item.price * 100);
+  // Calculate combo and multiplier
+  let newCombo = state.combo + 1;
+  let newMultiplier = state.comboMultiplier;
   
-  // Select a random compliment for successful scan
-  const compliments = [
-    "Great scan!",
-    "Nice job!",
-    "Perfect!",
-    "Keep it up!",
-    `+${Math.floor(item.price * 100)} points!`
-  ];
+  // Check if we get a category match bonus (same category in a row)
+  const categoryMatch = item.category === state.lastScannedCategory && state.lastScannedCategory !== '';
   
-  const randomCompliment = compliments[Math.floor(Math.random() * compliments.length)];
-  toast.success(randomCompliment);
+  // Increase multiplier based on combo count
+  if (newCombo % 3 === 0) {
+    newMultiplier += 0.5;
+  }
+  
+  // Extra bonus for scanning items of the same category in succession
+  if (categoryMatch) {
+    newMultiplier += 0.25;
+    toast.success("CATEGORY MATCH! +0.25x multiplier!", { duration: 1500 });
+  }
+  
+  // Base points calculation
+  let basePoints = Math.floor(item.price * 100);
+  
+  // Apply multiplier
+  const pointsWithMultiplier = Math.floor(basePoints * newMultiplier);
+  
+  // Calculate final score
+  const newScore = state.score + pointsWithMultiplier;
+  
+  // Generate a compliment based on combo level
+  const compliment = generateCompliment(newCombo);
+  
+  // Show score with multiplier information
+  if (newMultiplier > 1) {
+    toast.success(`${compliment} +${pointsWithMultiplier} points! (${newMultiplier}x multiplier)`, { 
+      duration: 2000,
+      position: 'top-center'
+    });
+  } else {
+    toast.success(`${compliment} +${pointsWithMultiplier} points!`);
+  }
   
   // Remove the scanned item and add new items including a higher chance of vegetables
   const updatedItems = state.items.filter(i => i.id !== item.id);
@@ -154,7 +225,10 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     ...state,
     score: newScore,
     items: newItems,
-    scannedItems: [...state.scannedItems, item]
+    scannedItems: [...state.scannedItems, item],
+    combo: newCombo,
+    comboMultiplier: newMultiplier,
+    lastScannedCategory: item.category
   };
 };
 
@@ -199,6 +273,16 @@ export const moveItem = (state: GameState, itemId: string, destination: 'left' |
 export const updateGameTime = (state: GameState): GameState => {
   const timeLeft = state.timeLeft - 1;
   
+  // Time bonus: every 15 seconds that pass, add a time bonus if the player has been doing well
+  let timeBonusAdded = 0;
+  if (timeLeft > 0 && timeLeft % 15 === 0 && state.combo >= 5) {
+    timeBonusAdded = 5; // 5 second bonus for maintaining a good combo
+    toast.success(`TIME BONUS! +${timeBonusAdded} seconds for your awesome combo!`, {
+      position: 'top-center',
+      duration: 3000
+    });
+  }
+  
   if (timeLeft <= 0) {
     return {
       ...state,
@@ -209,7 +293,7 @@ export const updateGameTime = (state: GameState): GameState => {
   
   return {
     ...state,
-    timeLeft
+    timeLeft: timeLeft + timeBonusAdded
   };
 };
 
