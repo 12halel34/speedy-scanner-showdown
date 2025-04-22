@@ -66,17 +66,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
     };
   }, []);
   
-  const handleScan = () => {
-    if (isScanning) return;
-    
-    setIsScanning(true);
-    onScan();
-    
-    setTimeout(() => {
-      setIsScanning(false);
-    }, 300);
-  };
-  
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -143,38 +132,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
             setCurrentlyProcessingDrop(false);
           }, 1000);
         }
-      } else if (itemId) {
-        if (processedItemsRef.current.has(itemId)) {
-          console.log("Already processed item with ID:", itemId);
-          setTimeout(() => {
-            processingRef.current = false;
-            setCurrentlyProcessingDrop(false);
-          }, 500);
-          return;
-        }
-        
-        processedItemsRef.current.add(itemId);
-        const draggedItemEvent = new CustomEvent('itemBeingProcessed', {
-          detail: { itemId: itemId }
-        });
-        document.dispatchEvent(draggedItemEvent);
-        
-        onItemDrop({ id: itemId } as ItemType);
-        
-        setTimeout(() => {
-          processedItemsRef.current.delete(itemId);
-          processingRef.current = false;
-          setCurrentlyProcessingDrop(false);
-        }, 1000);
-      } else {
-        processingRef.current = false;
-        setCurrentlyProcessingDrop(false);
       }
-      
-      setIsScanning(true);
-      setTimeout(() => {
-        setIsScanning(false);
-      }, 300);
     } catch (error) {
       console.error('Error processing dragged item:', error);
       toast.error('Failed to process item');
@@ -200,19 +158,14 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
       </div>
 
       <button 
-        onClick={handleScan}
-        className={`bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95`}
-        disabled={isScanning}
+        onClick={onScan}
+        className="bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform transition-transform active:scale-95 opacity-0 pointer-events-none"
       >
         <Scan size={40} />
       </button>
       
-      {isScanning && (
-        <div className="absolute top-0 left-0 w-full h-full bg-red-400 opacity-50 rounded-full scanner-flash" />
-      )}
-      
       <div className="mt-2 text-center text-sm font-semibold">
-        SCAN
+        SCAN AREA
       </div>
     </div>
   );
