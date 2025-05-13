@@ -1,4 +1,5 @@
 
+
 export interface Item {
   id: string;
   name: string;
@@ -36,6 +37,7 @@ export interface GameState {
   combo: number;
   comboMultiplier: number;
   lastScannedCategory: string;
+  lastComboTimestamp?: number; // Timestamp of the last combo increment
 }
 
 export interface Achievement {
@@ -45,3 +47,4 @@ export interface Achievement {
   isUnlocked: boolean;
   condition: (state: GameState) => boolean;
 }
+

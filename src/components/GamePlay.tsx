@@ -11,7 +11,8 @@ import {
   MAX_MISTAKES,
   isMarketItem,
   getRandomGameItems,
-  processItemScan
+  processItemScan,
+  COMBO_DECREASE_INTERVAL
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import { getRandomVegetables } from '@/data/items';
@@ -24,6 +25,7 @@ interface GamePlayProps {
 const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [gameState, setGameState] = useState<GameState>({
     ...initialState,
+    lastComboTimestamp: Date.now() // Initialize lastComboTimestamp when component mounts
   });
   const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
@@ -35,6 +37,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const maxConveyorItems = 16;
   const lastScannedPositionsRef = useRef<{id: string, timestamp: number}[]>([]);
   const processedItemsRef = useRef<Set<string>>(new Set());
+  const comboDecayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     const handleItemProcessing = (event: CustomEvent) => {
@@ -66,9 +69,27 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       setSpeedMultiplier(prev => prev + 0.02);
     }, 1000);
     
+    // Set up combo decay interval to check every 500ms
+    comboDecayIntervalRef.current = setInterval(() => {
+      if (gameState.gameStatus === 'playing' && gameState.combo > 0) {
+        const now = Date.now();
+        const timeSinceLastCombo = now - (gameState.lastComboTimestamp || now);
+        
+        if (timeSinceLastCombo > COMBO_DECREASE_INTERVAL) {
+          setGameState(prev => updateGameTime({
+            ...prev,
+            lastComboTimestamp: now
+          }));
+        }
+      }
+    }, 500);
+    
     return () => {
       if (speedIncreaseIntervalRef.current) {
         clearInterval(speedIncreaseIntervalRef.current);
+      }
+      if (comboDecayIntervalRef.current) {
+        clearInterval(comboDecayIntervalRef.current);
       }
     };
   }, []);
@@ -83,6 +104,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
             clearInterval(timer);
             if (speedIncreaseIntervalRef.current) {
               clearInterval(speedIncreaseIntervalRef.current);
+            }
+            if (comboDecayIntervalRef.current) {
+              clearInterval(comboDecayIntervalRef.current);
             }
             saveHighScore(newState.score);
             onGameOver(newState);
@@ -205,6 +229,9 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       if (newState.gameStatus === 'gameOver') {
         if (speedIncreaseIntervalRef.current) {
           clearInterval(speedIncreaseIntervalRef.current);
+        }
+        if (comboDecayIntervalRef.current) {
+          clearInterval(comboDecayIntervalRef.current);
         }
         saveHighScore(newState.score);
         setTimeout(() => onGameOver(newState), 500);

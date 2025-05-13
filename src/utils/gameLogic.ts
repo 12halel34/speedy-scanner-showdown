@@ -6,6 +6,8 @@ export const GAME_TIME = 60; // 60 seconds game time
 export const MAX_MISTAKES = 3; // 3 mistakes and you're out
 export const INITIAL_ITEMS_COUNT = 12; // Initial items count
 export const USED_POSITIONS_MEMORY = 30; // Remember 30 recently used positions
+export const MAX_COMBO = 20; // Maximum combo before reset
+export const COMBO_DECREASE_INTERVAL = 2000; // Time in ms before combo decreases
 
 export const initialGameState: GameState = {
   score: 0,
@@ -20,7 +22,8 @@ export const initialGameState: GameState = {
   highScore: 0,
   combo: 0,
   comboMultiplier: 1,
-  lastScannedCategory: ''
+  lastScannedCategory: '',
+  lastComboTimestamp: Date.now()
 };
 
 // Helper function to check if an item is a market item
@@ -66,7 +69,8 @@ export const initGame = (): GameState => {
     thrownItems: [],
     combo: 0,
     comboMultiplier: 1,
-    lastScannedCategory: ''
+    lastScannedCategory: '',
+    lastComboTimestamp: Date.now()
   };
 };
 
@@ -136,6 +140,7 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
       mistakes: state.mistakes + 1,
       combo: 0,
       comboMultiplier: 1,
+      lastComboTimestamp: Date.now(),
       gameStatus: state.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : state.gameStatus
     };
   }
@@ -148,20 +153,24 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
       mistakes: state.mistakes + 1,
       combo: 0,
       comboMultiplier: 1,
+      lastComboTimestamp: Date.now(),
       gameStatus: state.mistakes + 1 >= MAX_MISTAKES ? 'gameOver' : state.gameStatus
     };
   }
   
-  // Check location only if it's a valid item
-  // Disabled for now to allow direct scanning on drop
-  // if (!isInCorrectLocation) {
-  //   toast.error("Item in wrong location! Move it to the correct side first!");
-  //   return state;
-  // }
-  
   // Calculate combo and multiplier
   let newCombo = state.combo + 1;
   let newMultiplier = state.comboMultiplier;
+  
+  // Check if we reached the maximum combo
+  if (newCombo > MAX_COMBO) {
+    // Reset combo and give bonus
+    newCombo = 0;
+    toast.success(`COMBO MASTER! You reached ${MAX_COMBO} combo! +5 seconds bonus!`, {
+      duration: 3000,
+      position: 'top-center'
+    });
+  }
   
   // Check if we get a category match bonus (same category in a row)
   // Fix: Category could be empty string, so we need to ensure lastScannedCategory is not empty
@@ -230,7 +239,9 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     scannedItems: [...state.scannedItems, item],
     combo: newCombo,
     comboMultiplier: newMultiplier,
-    lastScannedCategory: item.category
+    lastScannedCategory: item.category,
+    lastComboTimestamp: Date.now(),
+    timeLeft: newCombo === 0 ? state.timeLeft + 5 : state.timeLeft // Add 5 seconds when combo resets
   };
 };
 
@@ -271,18 +282,28 @@ export const moveItem = (state: GameState, itemId: string, destination: 'left' |
   };
 };
 
-// Update game timer
+// Update game timer and handle combo decay
 export const updateGameTime = (state: GameState): GameState => {
   const timeLeft = state.timeLeft - 1;
   
-  // Time bonus: every 15 seconds that pass, add a time bonus if the player has been doing well
-  let timeBonusAdded = 0;
-  if (timeLeft > 0 && timeLeft % 15 === 0 && state.combo >= 5) {
-    timeBonusAdded = 5; // 5 second bonus for maintaining a good combo
-    toast.success(`TIME BONUS! +${timeBonusAdded} seconds for your awesome combo!`, {
-      position: 'top-center',
-      duration: 3000
-    });
+  // Check if we need to decrease the combo due to inactivity
+  const now = Date.now();
+  const timeSinceLastCombo = now - (state.lastComboTimestamp || now);
+  
+  // Decrease combo if it's been too long since the last scan and combo > 0
+  let newCombo = state.combo;
+  let newComboMultiplier = state.comboMultiplier;
+  
+  if (state.combo > 0 && timeSinceLastCombo > COMBO_DECREASE_INTERVAL) {
+    newCombo = Math.max(0, state.combo - 1);
+    newComboMultiplier = 1 + (newCombo * 0.1); // Simple formula to recalculate multiplier
+    
+    // Only show a message for significant combo loss
+    if (state.combo >= 5 && newCombo < 5) {
+      toast.warning("Combo decreasing! Scan items faster!", { 
+        duration: 2000,
+      });
+    }
   }
   
   if (timeLeft <= 0) {
@@ -295,7 +316,10 @@ export const updateGameTime = (state: GameState): GameState => {
   
   return {
     ...state,
-    timeLeft: timeLeft + timeBonusAdded
+    timeLeft,
+    combo: newCombo,
+    comboMultiplier: newComboMultiplier,
+    lastComboTimestamp: newCombo < state.combo ? now : state.lastComboTimestamp
   };
 };
 
