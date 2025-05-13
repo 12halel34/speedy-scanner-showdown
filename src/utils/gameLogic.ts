@@ -1,4 +1,3 @@
-
 import { GameState, Item } from '@/types/game';
 import { getRandomItems as getItemsFromData, getRandomVegetables, invalidItems, marketItems } from '@/data/items';
 import { toast } from 'sonner';
@@ -119,7 +118,7 @@ const generateCompliment = (comboCount: number): string => {
       "SCANNER NINJA!!!"
     ];
     return epicCompliments[Math.floor(Math.random() * epicCompliments.length)];
-  }
+  };
 };
 
 // Process an item scan
@@ -314,4 +313,3 @@ export const saveHighScore = (score: number): void => {
 export const checkAchievements = (state: GameState): void => {
   // We'll implement this in a future version
 };
-
