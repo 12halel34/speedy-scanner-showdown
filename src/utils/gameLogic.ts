@@ -1,3 +1,4 @@
+
 import { GameState, Item } from '@/types/game';
 import { getRandomItems as getItemsFromData, getRandomVegetables, invalidItems, marketItems } from '@/data/items';
 import { toast } from 'sonner';
@@ -163,7 +164,8 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   let newMultiplier = state.comboMultiplier;
   
   // Check if we get a category match bonus (same category in a row)
-  const categoryMatch = item.category === state.lastScannedCategory && state.lastScannedCategory !== '';
+  // Fix: Category could be empty string, so we need to ensure lastScannedCategory is not empty
+  const categoryMatch = state.lastScannedCategory !== '' && item.category === state.lastScannedCategory;
   
   // Increase multiplier based on combo count
   if (newCombo % 3 === 0) {
@@ -311,3 +313,4 @@ export const saveHighScore = (score: number): void => {
 export const checkAchievements = (state: GameState): void => {
   // We'll implement this in a future version
 };
+
