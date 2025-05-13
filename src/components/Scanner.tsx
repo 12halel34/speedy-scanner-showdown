@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Scan, Star, Sparkles } from 'lucide-react';
 import { Item as ItemType } from '@/types/game';
@@ -131,6 +132,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onItemDrop }) => {
           
           playScanSound();
           
+          // Process the item as scanned immediately when dropped
           onItemDrop(item);
           onScan();
           

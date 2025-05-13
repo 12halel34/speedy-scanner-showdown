@@ -10,7 +10,8 @@ import {
   saveHighScore,
   MAX_MISTAKES,
   isMarketItem,
-  getRandomGameItems
+  getRandomGameItems,
+  processItemScan
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import { getRandomVegetables } from '@/data/items';
@@ -163,13 +164,15 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     }
     
     setSelectedItem(item);
+    
+    // Automatically process the item when it's scanned
+    processSelectedItem(item);
   }, []);
   
   const handleScanButtonClick = useCallback(() => {
-    if (selectedItem) {
-      processSelectedItem(selectedItem);
-    }
-  }, [selectedItem]);
+    // This is a no-op now since we auto-process on scan
+    console.log("Scan button clicked but items auto-process on scan now");
+  }, []);
 
   const processSelectedItem = (item: ItemType) => {
     if (item.id && processedItemsRef.current.has(item.id + "_processed")) {
@@ -194,57 +197,34 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       return;
     }
     
-    if (isMarketItem(fullItem)) {
-      const scoreIncrease = Math.floor(fullItem.price * 100);
+    // Process the item with the game logic
+    setGameState(prev => {
+      const newState = processItemScan(prev, fullItem);
       
-      setScoreAnimation({
-        amount: scoreIncrease,
-        isVisible: true
-      });
-      
-      setTimeout(() => {
-        setScoreAnimation(prev => ({ ...prev, isVisible: false }));
-      }, 1000);
-      
-      setGameState(prev => ({
-        ...prev,
-        score: prev.score + scoreIncrease,
-        scannedItems: [...prev.scannedItems, fullItem],
-        combo: prev.combo + 1,
-        comboMultiplier: prev.combo % 3 === 2 ? prev.comboMultiplier + 0.5 : prev.comboMultiplier,
-        lastScannedCategory: fullItem.category
-      }));
-      
-      toast.success(`+${scoreIncrease} points!`);
-      
-      lastScannedPositionsRef.current.push({
-        id: fullItem.id,
-        timestamp: Date.now()
-      });
-    } else {
-      setGameState(prev => {
-        const newMistakes = prev.mistakes + 1;
-        const newGameStatus = newMistakes >= MAX_MISTAKES ? 'gameOver' : prev.gameStatus;
-        
-        if (newGameStatus === 'gameOver') {
-          if (speedIncreaseIntervalRef.current) {
-            clearInterval(speedIncreaseIntervalRef.current);
-          }
-          saveHighScore(prev.score);
-          setTimeout(() => onGameOver({...prev, mistakes: newMistakes, gameStatus: 'gameOver'}), 500);
+      // If the game is over due to this scan
+      if (newState.gameStatus === 'gameOver') {
+        if (speedIncreaseIntervalRef.current) {
+          clearInterval(speedIncreaseIntervalRef.current);
         }
+        saveHighScore(newState.score);
+        setTimeout(() => onGameOver(newState), 500);
+      }
+      
+      // Show score animation for valid items
+      if (newState.score > prev.score) {
+        const scoreIncrease = newState.score - prev.score;
+        setScoreAnimation({
+          amount: scoreIncrease,
+          isVisible: true
+        });
         
-        toast.error(`Strike ${newMistakes}/${MAX_MISTAKES}! This item doesn't belong in a supermarket!`);
-        
-        return {
-          ...prev,
-          mistakes: newMistakes,
-          gameStatus: newGameStatus,
-          combo: 0,
-          comboMultiplier: 1
-        };
-      });
-    }
+        setTimeout(() => {
+          setScoreAnimation(prev => ({ ...prev, isVisible: false }));
+        }, 1000);
+      }
+      
+      return newState;
+    });
     
     const newItemsCount = 1;
     
@@ -279,13 +259,8 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       }, 3000);
     }
     
-    setTimeout(() => {
-      try {
-        processSelectedItem(item);
-      } catch (error) {
-        console.error("Error processing dropped item:", error);
-      }
-    }, 100);
+    // Process the item immediately when dropped
+    processSelectedItem(item);
   }, []);
   
   const handleItemReachEnd = useCallback((item: ItemType) => {

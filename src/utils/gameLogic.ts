@@ -154,10 +154,11 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   }
   
   // Check location only if it's a valid item
-  if (!isInCorrectLocation) {
-    toast.error("Item in wrong location! Move it to the correct side first!");
-    return state;
-  }
+  // Disabled for now to allow direct scanning on drop
+  // if (!isInCorrectLocation) {
+  //   toast.error("Item in wrong location! Move it to the correct side first!");
+  //   return state;
+  // }
   
   // Calculate combo and multiplier
   let newCombo = state.combo + 1;
@@ -220,7 +221,7 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
       location: 'right' as const
     }));
   
-  // Combine all new items - fixed to avoid using _positionOffset which doesn't exist in the Item type
+  // Combine all new items
   const newItems = [...updatedItems, ...newRegularItems, ...newVegetables];
   
   return {
