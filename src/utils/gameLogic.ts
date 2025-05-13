@@ -134,7 +134,10 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   // Check if the item should be scannable
   if (!isMarketItem(item)) {
     // Non-supermarket item
-    toast.error(`This ${item.name} doesn't belong in the shopping cart!`);
+    toast.error(`This ${item.name} doesn't belong in the shopping cart!`, {
+      position: 'bottom-center',
+      duration: 2000
+    });
     return {
       ...state,
       mistakes: state.mistakes + 1,
@@ -147,7 +150,10 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
 
   if (!item.isScannable) {
     // Wrong item scanned
-    toast.error("Wrong item! That doesn't belong in the cart!");
+    toast.error("Wrong item! That doesn't belong in the cart!", {
+      position: 'bottom-center',
+      duration: 2000
+    });
     return {
       ...state,
       mistakes: state.mistakes + 1,
@@ -168,7 +174,7 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     newCombo = 0;
     toast.success(`COMBO MASTER! You reached ${MAX_COMBO} combo! +5 seconds bonus!`, {
       duration: 3000,
-      position: 'top-center'
+      position: 'bottom-center'
     });
   }
   
@@ -184,7 +190,10 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   // Extra bonus for scanning items of the same category in succession
   if (categoryMatch) {
     newMultiplier += 0.25;
-    toast.success("CATEGORY MATCH! +0.25x multiplier!", { duration: 1500 });
+    toast.success("CATEGORY MATCH! +0.25x multiplier!", { 
+      duration: 1500,
+      position: 'bottom-center'
+    });
   }
   
   // Base points calculation
@@ -203,10 +212,13 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   if (newMultiplier > 1) {
     toast.success(`${compliment} +${pointsWithMultiplier} points! (${newMultiplier}x multiplier)`, { 
       duration: 2000,
-      position: 'top-center'
+      position: 'bottom-center'
     });
   } else {
-    toast.success(`${compliment} +${pointsWithMultiplier} points!`);
+    toast.success(`${compliment} +${pointsWithMultiplier} points!`, {
+      duration: 1500,
+      position: 'bottom-center'
+    });
   }
   
   // Remove the scanned item and add new items including a higher chance of vegetables
