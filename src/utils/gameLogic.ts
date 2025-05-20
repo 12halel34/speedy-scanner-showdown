@@ -6,7 +6,7 @@ export const GAME_TIME = 60; // 60 seconds game time
 export const MAX_MISTAKES = 3; // 3 mistakes and you're out
 export const INITIAL_ITEMS_COUNT = 12; // Initial items count
 export const USED_POSITIONS_MEMORY = 30; // Remember 30 recently used positions
-export const MAX_COMBO = 20; // Maximum combo before reset
+export const MAX_COMBO = 10; // Maximum combo before reset (changed from 20 to 10)
 export const COMBO_DECREASE_INTERVAL = 2000; // Time in ms before combo decreases
 
 export const initialGameState: GameState = {
@@ -167,12 +167,14 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
   // Calculate combo and multiplier
   let newCombo = state.combo + 1;
   let newMultiplier = state.comboMultiplier;
+  let timeBonus = 0;
   
   // Check if we reached the maximum combo
   if (newCombo > MAX_COMBO) {
     // Reset combo and give bonus
     newCombo = 0;
-    toast.success(`COMBO MASTER! You reached ${MAX_COMBO} combo! +5 seconds bonus!`, {
+    timeBonus = 5;
+    toast.success(`COMBO MASTER! You reached ${MAX_COMBO} combo! +${timeBonus} seconds bonus!`, {
       duration: 3000,
       position: 'bottom-center'
     });
@@ -253,7 +255,7 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     comboMultiplier: newMultiplier,
     lastScannedCategory: item.category,
     lastComboTimestamp: Date.now(),
-    timeLeft: newCombo === 0 ? state.timeLeft + 5 : state.timeLeft // Add 5 seconds when combo resets
+    timeLeft: timeBonus > 0 ? state.timeLeft + timeBonus : state.timeLeft // Add time bonus when combo max is reached
   };
 };
 
