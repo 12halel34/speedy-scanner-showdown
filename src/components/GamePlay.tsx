@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import ConveyorBelt from './ConveyorBelt';
 import Scanner from './Scanner';
@@ -16,6 +17,7 @@ import {
 } from '@/utils/gameLogic';
 import { toast } from 'sonner';
 import { getRandomVegetables } from '@/data/items';
+import ComplimentDisplay from './ComplimentDisplay';
 
 interface GamePlayProps {
   initialState: GameState;
@@ -31,6 +33,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
   const [conveyorItems, setConveyorItems] = useState<ItemType[]>([]);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [scoreAnimation, setScoreAnimation] = useState<{ amount: number, isVisible: boolean }>({ amount: 0, isVisible: false });
+  const [complimentAnimation, setComplimentAnimation] = useState<{ text: string, isVisible: boolean }>({ text: "", isVisible: false });
   const speedIncreaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const itemProcessingRef = useRef<Set<string>>(new Set());
   const minConveyorItems = 12;
@@ -225,6 +228,24 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
     setGameState(prev => {
       const newState = processItemScan(prev, fullItem);
       
+      // Show compliment animation for valid items (supermarket items)
+      if (isMarketItem(fullItem) && newState.score > prev.score) {
+        // The compliment is generated inside processItemScan, but we need it here too
+        // Let's extract it from the last element of scannedItems
+        const compliment = newState.lastCompliment || "";
+        
+        if (compliment) {
+          setComplimentAnimation({
+            text: compliment,
+            isVisible: true
+          });
+          
+          setTimeout(() => {
+            setComplimentAnimation(prev => ({ ...prev, isVisible: false }));
+          }, 2000);
+        }
+      }
+      
       // If the game is over due to this scan
       if (newState.gameStatus === 'gameOver') {
         if (speedIncreaseIntervalRef.current) {
@@ -327,7 +348,7 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
       />
 
       <div className="flex flex-col mt-4">
-        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px]">
+        <div className="w-full bg-blue-50 p-4 rounded-lg min-h-[300px] relative">
           <h3 className="text-lg font-bold text-center mb-4">Supermarket Scanner</h3>
           
           {selectedItem && <SelectedItemDisplay selectedItem={selectedItem} />}
@@ -352,6 +373,12 @@ const GamePlay: React.FC<GamePlayProps> = ({ initialState, onGameOver }) => {
           </div>
           
           <BasketPreview itemCount={gameState.scannedItems.length} />
+          
+          {/* Display the animated compliment */}
+          <ComplimentDisplay 
+            compliment={complimentAnimation.text}
+            isVisible={complimentAnimation.isVisible} 
+          />
         </div>
       </div>
     </div>

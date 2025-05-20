@@ -23,7 +23,8 @@ export const initialGameState: GameState = {
   combo: 0,
   comboMultiplier: 1,
   lastScannedCategory: '',
-  lastComboTimestamp: Date.now()
+  lastComboTimestamp: Date.now(),
+  lastCompliment: '',
 };
 
 // Helper function to check if an item is a market item
@@ -70,7 +71,8 @@ export const initGame = (): GameState => {
     combo: 0,
     comboMultiplier: 1,
     lastScannedCategory: '',
-    lastComboTimestamp: Date.now()
+    lastComboTimestamp: Date.now(),
+    lastCompliment: '',
   };
 };
 
@@ -275,6 +277,7 @@ export const processItemScan = (state: GameState, item: Item): GameState => {
     comboMultiplier: newMultiplier,
     lastScannedCategory: item.category,
     lastComboTimestamp: Date.now(),
+    lastCompliment: compliment, // Store the generated compliment
     timeLeft: timeBonus > 0 ? state.timeLeft + timeBonus : state.timeLeft // Add time bonus when combo max is reached
   };
 };

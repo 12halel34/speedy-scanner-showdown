@@ -182,3 +182,94 @@
   animation: bounce 1.5s ease-in-out infinite;
 }
 
+/* New compliment animations */
+@keyframes compliment-small {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes compliment-medium {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-5deg);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.2) rotate(5deg);
+  }
+  30% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+  45% {
+    transform: scale(1.15) rotate(2deg);
+  }
+  60% {
+    transform: scale(1.1) rotate(0deg);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes compliment-large {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-10deg);
+    filter: blur(4px);
+  }
+  10% {
+    opacity: 0.8;
+    filter: blur(0);
+    transform: scale(1.4) rotate(10deg);
+  }
+  20% {
+    transform: scale(1.2) rotate(-5deg);
+  }
+  30% {
+    transform: scale(1.3) rotate(3deg);
+  }
+  40% {
+    transform: scale(1.2) rotate(-2deg);
+  }
+  50% {
+    transform: scale(1.25) rotate(1deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.2) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.compliment-animation-small {
+  animation: compliment-small 1.5s ease-out forwards;
+}
+
+.compliment-animation-medium {
+  animation: compliment-medium 1.8s ease-out forwards;
+}
+
+.compliment-animation-large {
+  animation: compliment-large 2s ease-out forwards;
+}
