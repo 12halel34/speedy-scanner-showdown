@@ -96,6 +96,10 @@ const generateCompliment = (comboCount: number): string => {
       "Nice job!",
       "Perfect!",
       "Keep it up!",
+      "Brilliant!",
+      "Amazing!",
+      "Fantastic!",
+      "Wonderful!",
     ];
     return basicCompliments[Math.floor(Math.random() * basicCompliments.length)];
   } else if (comboCount <= 3) {
@@ -103,7 +107,12 @@ const generateCompliment = (comboCount: number): string => {
       "You're on fire!",
       "Great combo!",
       "Cashier skills leveling up!",
-      "Speedy scanning!"
+      "Speedy scanning!",
+      "Inspiring!",
+      "Talented!",
+      "Remarkable!",
+      "Outstanding!",
+      "Extraordinary!",
     ];
     return goodCompliments[Math.floor(Math.random() * goodCompliments.length)];
   } else if (comboCount <= 6) {
@@ -111,7 +120,12 @@ const generateCompliment = (comboCount: number): string => {
       "INCREDIBLE!",
       "AMAZING COMBO!",
       "CASHIER SUPERSTAR!",
-      "LIGHTNING FAST!"
+      "LIGHTNING FAST!",
+      "FABULOUS!",
+      "SPECTACULAR!",
+      "STUNNING!",
+      "MAGNIFICENT!",
+      "GLORIOUS!",
     ];
     return awesomeCompliments[Math.floor(Math.random() * awesomeCompliments.length)];
   } else {
@@ -119,7 +133,13 @@ const generateCompliment = (comboCount: number): string => {
       "UNSTOPPABLE!!!",
       "CASHIER GOD MODE!!!",
       "LEGENDARY SCANNING!!!",
-      "SCANNER NINJA!!!"
+      "SCANNER NINJA!!!",
+      "PHENOMENAL!!!",
+      "BREATHTAKING!!!",
+      "UNBELIEVABLE!!!",
+      "JAW-DROPPING!!!",
+      "MIND-BLOWING!!!",
+      "AWESOME!!!",
     ];
     return epicCompliments[Math.floor(Math.random() * epicCompliments.length)];
   };
