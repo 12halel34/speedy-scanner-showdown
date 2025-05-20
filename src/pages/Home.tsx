@@ -11,7 +11,7 @@ const Home = () => {
         <div className="text-center mb-16">
           <div className="mb-4 text-green-600 text-lg font-semibold">Welcome to</div>
           <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600 mb-4">
-            SuperScan Express
+            קופאית 2000
           </h1>
           <p className="text-xl text-gray-600 mb-8">
             Experience the thrill of being a supermarket cashier!

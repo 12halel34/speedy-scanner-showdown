@@ -13,7 +13,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onStartGame, highScore }) => {
     <div className="flex flex-col items-center justify-center h-full p-6 text-center">
       <div className="mb-8">
         <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
-          Cashier 2000
+          קופאית 2000
         </h1>
         <p className="text-xl text-gray-600">
           Scan items lightning fast! Beat the clock!
