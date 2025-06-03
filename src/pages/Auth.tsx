@@ -83,6 +83,7 @@ const Auth = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="בחר שם משתמש"
+                required={!isLogin}
               />
             </div>
           )}
