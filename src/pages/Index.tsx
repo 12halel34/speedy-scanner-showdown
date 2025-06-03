@@ -6,9 +6,13 @@ import GameOver from '@/components/GameOver';
 import UserProfile from '@/components/UserProfile';
 import { GameState } from '@/types/game';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Trophy } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { profile, updateProfile } = useAuth();
+  const navigate = useNavigate();
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     timeLeft: 60,
@@ -104,7 +108,15 @@ const Index = () => {
       <div className="max-w-4xl mx-auto p-4">
         {gameState.gameStatus === 'menu' && (
           <div>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between mb-4">
+              <Button
+                onClick={() => navigate('/leaderboard')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Trophy size={16} />
+                לוח התוצאות
+              </Button>
               <button
                 onClick={() => setShowProfile(true)}
                 className="text-blue-600 hover:text-blue-800 text-sm"
