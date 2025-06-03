@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ShoppingCart, Receipt, Barcode, LogIn, User } from "lucide-react";
+import { ShoppingCart, Receipt, Barcode, LogIn, User, Trophy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Home = () => {
@@ -16,6 +16,12 @@ const Home = () => {
             קופאית 2000
           </h1>
           <div className="flex gap-2">
+            <Link to="/leaderboard">
+              <Button variant="outline">
+                <Trophy className="mr-2" size={16} />
+                לוח התוצאות
+              </Button>
+            </Link>
             {user ? (
               <Link to="/play">
                 <Button variant="outline">
